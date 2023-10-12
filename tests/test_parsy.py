@@ -8,6 +8,7 @@ from parsy import (
     ParseError,
     Parser,
     ParserReference,
+    ParseState,
     Result,
     any_char,
     char_from,
@@ -623,12 +624,12 @@ class TestParser(unittest.TestCase):
 class TestUtils(unittest.TestCase):
     def test_line_info_at(self):
         text = "abc\ndef"
-        self.assertEqual(line_info_at(text, 0), (0, 0))
-        self.assertEqual(line_info_at(text, 2), (0, 2))
-        self.assertEqual(line_info_at(text, 3), (0, 3))
-        self.assertEqual(line_info_at(text, 4), (1, 0))
-        self.assertEqual(line_info_at(text, 7), (1, 3))
-        self.assertRaises(ValueError, lambda: line_info_at(text, 8))
+        self.assertEqual(line_info_at(ParseState(text, 0)), (0, 0))
+        self.assertEqual(line_info_at(ParseState(text, 2)), (0, 2))
+        self.assertEqual(line_info_at(ParseState(text, 3)), (0, 3))
+        self.assertEqual(line_info_at(ParseState(text, 4)), (1, 0))
+        self.assertEqual(line_info_at(ParseState(text, 7)), (1, 3))
+        self.assertRaises(ValueError, lambda: line_info_at(ParseState(text, 8)))
 
 
 # Type alias used in test_recursive_parser, has to be defined at module or class level

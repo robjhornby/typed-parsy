@@ -61,34 +61,38 @@ def noop(val: T) -> T:
     return val
 
 
-def line_info_at(stream: str, index: int) -> Tuple[int, int]:
-    if index > len(stream):
-        raise ValueError("invalid index")
-    line = stream.count("\n", 0, index)
-    last_nl = stream.rfind("\n", 0, index)
-    col = index - (last_nl + 1)
+@dataclass(frozen=True)
+class ParseState:
+    stream: str
+    index: int
+
+    @staticmethod
+    def start(stream: str) -> ParseState:
+        return ParseState(stream, 0)
+
+    def at(self: ParseState, index: int) -> ParseState:
+        return ParseState(self.stream, index)
+
+
+def line_info_at(state: ParseState) -> Tuple[int, int]:
+    if state.index > len(state.stream):
+        raise ValueError("invalid state.index")
+    line = state.stream.count("\n", 0, state.index)
+    last_nl = state.stream.rfind("\n", 0, state.index)
+    col = state.index - (last_nl + 1)
     return (line, col)
 
 
-# @dataclass
-# class Stream:
-#     stream: str
-
-#     def at_index(self, index: int):
-#         return memoryview(self.stream)
-
-
 class ParseError(RuntimeError):
-    def __init__(self, expected: FrozenSet[str], stream: str, index: int):
+    def __init__(self, expected: FrozenSet[str], state: ParseState):
         self.expected: FrozenSet[str] = expected
-        self.stream: str = stream
-        self.index: int = index
+        self.state: ParseState = state
 
     def line_info(self) -> str:
         try:
-            return "{}:{}".format(*line_info_at(self.stream, self.index))
+            return "{}:{}".format(*line_info_at(self.state))
         except (TypeError, AttributeError):  # not a str
-            return str(self.index)
+            return str(self.state.index)
 
     def __str__(self) -> str:
         expected_list = sorted(repr(e) for e in self.expected)
@@ -130,7 +134,7 @@ class Result(Generic[OUT_co]):
         if self.furthest > other.furthest:
             return self
         elif self.furthest == other.furthest:
-            # if we both have the same failure index, we combine the expected messages.
+            # if we both have the same failure state.index, we combine the expected messages.
             return Result(self.status, self.index, self.value, self.furthest, self.expected | other.expected)
         else:
             return Result(self.status, self.index, self.value, other.furthest, other.expected)
@@ -139,19 +143,19 @@ class Result(Generic[OUT_co]):
 class Parser(Generic[OUT_co]):
     """
     A Parser is an object that wraps a function whose arguments are
-    a string to be parsed and the index on which to begin parsing.
-    The function should return either Result.success(next_index, value),
-    where the next index is where to continue the parse and the value is
-    the yielded value, or Result.failure(index, expected), where expected
-    is a string indicating what was expected, and the index is the index
+    a string to be parsed and the state.index on which to begin parsing.
+    The function should return either Result.success(next_state.index, value),
+    where the next state.index is where to continue the parse and the value is
+    the yielded value, or Result.failure(state.index, expected), where expected
+    is a string indicating what was expected, and the state.index is the state.index
     of the failure.
     """
 
-    def __init__(self, wrapped_fn: Callable[[str, int], Result[OUT_co]]):
-        self.wrapped_fn: Callable[[str, int], Result[OUT_co]] = wrapped_fn
+    def __init__(self, wrapped_fn: Callable[[ParseState], Result[OUT_co]]):
+        self.wrapped_fn: Callable[[ParseState], Result[OUT_co]] = wrapped_fn
 
-    def __call__(self, stream: str, index: int) -> Result[OUT_co]:
-        return self.wrapped_fn(stream, index)
+    def __call__(self, state: ParseState) -> Result[OUT_co]:
+        return self.wrapped_fn(state)
 
     def parse(self, stream: str) -> OUT_co:
         """Parse a string and return the result or raise a ParseError."""
@@ -164,21 +168,29 @@ class Parser(Generic[OUT_co]):
         Return a tuple of the result and the rest of the string,
         or raise a ParseError.
         """
-        result = self(stream, 0)
+        result = self(ParseState.start(stream))
 
         if result.status:
             return (result.value, stream[result.index :])
         else:
-            raise ParseError(result.expected, stream, result.furthest)
+            raise ParseError(result.expected, ParseState(stream, result.furthest))
+
+    def parse_state(self, state: ParseState) -> Tuple[OUT_co, ParseState]:
+        result = self(state)
+
+        if result.status:
+            return (result.value, state.at(result.index))
+        else:
+            raise ParseError(result.expected, state.at(result.furthest))
 
     def bind(self: Parser[OUT1], bind_fn: Callable[[OUT1], Parser[OUT2]]) -> Parser[OUT2]:
         @Parser
-        def bound_parser(stream: str, index: int) -> Result[OUT2]:
-            result: Result[OUT1] = self(stream, index)
+        def bound_parser(state: ParseState) -> Result[OUT2]:
+            result: Result[OUT1] = self(state)
 
             if result.status:
                 next_parser = bind_fn(result.value)
-                return next_parser(stream, result.index).aggregate(result)
+                return next_parser(state.at(result.index)).aggregate(result)
             else:
                 return result  # type: ignore
 
@@ -211,23 +223,23 @@ class Parser(Generic[OUT_co]):
 
         # TODO - must execute at least once
         @Parser
-        def times_parser(stream: str, index: int) -> Result[List[OUT_co]]:
+        def times_parser(state: ParseState) -> Result[List[OUT_co]]:
             values: List[OUT_co] = []
             times = 0
             result = None
 
             while times < the_max:
-                result = self(stream, index).aggregate(result)
+                result = self(state).aggregate(result)
                 if result.status:
                     values.append(result.value)
-                    index = result.index
+                    state = state.at(result.index)
                     times += 1
                 elif times >= min:
                     break
                 else:
                     return result  # type: ignore
 
-            return Result.success(index, values).aggregate(result)
+            return Result.success(state.index, values).aggregate(result)
 
         return times_parser
 
@@ -247,33 +259,33 @@ class Parser(Generic[OUT_co]):
         max: int | float = float("inf"),
     ) -> Parser[List[OUT_co]]:
         @Parser
-        def until_parser(stream: str, index: int) -> Result[List[OUT_co]]:
+        def until_parser(state: ParseState) -> Result[List[OUT_co]]:
             values: List[OUT_co] = []
             times = 0
             while True:
                 # try parser first
-                res = other(stream, index)
+                res = other(state)
                 if res.status and times >= min:
-                    return Result.success(index, values)
+                    return Result.success(state.index, values)
 
                 # exceeded max?
                 if times >= max:
                     # return failure, it matched parser more than max times
-                    return Result.failure(index, f"at most {max} items")
+                    return Result.failure(state.index, f"at most {max} items")
 
                 # failed, try parser
-                result = self(stream, index)
+                result = self(state)
                 if result.status:
                     # consume
                     values.append(result.value)
-                    index = result.index
+                    state = state.at(result.index)
                     times += 1
                 elif times >= min:
                     # return failure, parser is not followed by other
-                    return Result.failure(index, "did not find other parser")
+                    return Result.failure(state.index, "did not find other parser")
                 else:
                     # return failure, it did not match parser at least min times
-                    return Result.failure(index, f"at least {min} items; got {times} item(s)")
+                    return Result.failure(state.index, f"at least {min} items; got {times} item(s)")
 
         return until_parser
 
@@ -291,12 +303,12 @@ class Parser(Generic[OUT_co]):
 
     def desc(self, description: str) -> Parser[OUT_co]:
         @Parser
-        def desc_parser(stream: str, index: int) -> Result[OUT_co]:
-            result = self(stream, index)
+        def desc_parser(state: ParseState) -> Result[OUT_co]:
+            result = self(state)
             if result.status:
                 return result
             else:
-                return Result.failure(index, description)
+                return Result.failure(state.index, description)
 
         return desc_parser
 
@@ -308,11 +320,11 @@ class Parser(Generic[OUT_co]):
 
     def should_fail(self: Parser[OUT], description: str) -> Parser[Result[OUT]]:
         @Parser
-        def fail_parser(stream: str, index: int) -> Result[Result[OUT]]:
-            res = self(stream, index)
+        def fail_parser(state: ParseState) -> Result[Result[OUT]]:
+            res = self(state)
             if res.status:
-                return Result.failure(index, description)
-            return Result.success(index, res)
+                return Result.failure(state.index, description)
+            return Result.success(state.index, res)
 
         return fail_parser
 
@@ -374,25 +386,25 @@ class Parser(Generic[OUT_co]):
 
     def __or__(self: Parser[OUT1], other: Parser[OUT2]) -> Parser[Union[OUT1, OUT2]]:
         @Parser
-        def alt_parser(stream: str, index: int) -> Result[Union[OUT1, OUT2]]:
+        def alt_parser(state: ParseState) -> Result[Union[OUT1, OUT2]]:
             result0 = None
 
-            result1 = self(stream, index).aggregate(result0)
+            result1 = self(state).aggregate(result0)
             if result1.status:
                 return result1
 
-            result2 = other(stream, index).aggregate(result1)
+            result2 = other(state).aggregate(result1)
             return result2
 
         return alt_parser
 
     def __and__(self: Parser[OUT1], other: Parser[OUT2]) -> Parser[tuple[OUT1, OUT2]]:
         @Parser
-        def and_parser(stream: str, index: int) -> Result[tuple[OUT1, OUT2]]:
-            self_result = self(stream, index)
+        def and_parser(state: ParseState) -> Result[tuple[OUT1, OUT2]]:
+            self_result = self(state)
             if not self_result.status:
                 return self_result  # type: ignore
-            other_result = other(stream, self_result.index).aggregate(self_result)
+            other_result = other(ParseState(state.stream, self_result.index)).aggregate(self_result)
             if not other_result.status:
                 return other_result  # type: ignore
 
@@ -443,34 +455,34 @@ class Parser(Generic[OUT_co]):
 
 # The big issue is that each `val = yield parser` inside a @generate parser has
 # a different type, and we'd like those to be typed checked. But the
-# `Generator[...]` expects a homogeneous stream of yield and send types,
+# `Generator[...]` expects a homogeneous state.stream of yield and send types,
 # whereas we have pairs of yield/send types which need to match within the
-# pair, but each pair can be completely different from the next in the stream
+# pair, but each pair can be completely different from the next in the state.stream
 
 
 def generate(fn: Callable[[], Generator[Parser[T], T, OUT]]) -> Parser[OUT]:
     @Parser
     @wraps(fn)
-    def generated(stream: str, index: int) -> Result[OUT]:
+    def generated(state: ParseState) -> Result[OUT]:
         # start up the generator
         iterator = fn()
         next_parser = next(iterator)
-        result = next_parser(stream, index)
+        result = next_parser(state)
         if not result.status:
             return result  # type: ignore
         value = result.value
-        index = result.index
+        state = state.at(result.index)
         try:
             while True:
                 next_parser = iterator.send(value)
-                result = next_parser(stream, index).aggregate(result)
+                result = next_parser(state).aggregate(result)
                 if not result.status:
                     return result  # type: ignore
                 value = result.value
-                index = result.index
+                state = state.at(result.index)
         except StopIteration as stop:
             returnVal = stop.value
-            return Result.success(index, returnVal).aggregate(result)
+            return Result.success(state.index, returnVal).aggregate(result)
 
     return generated
 
@@ -479,16 +491,16 @@ def generate(fn: Callable[[], Generator[Parser[T], T, OUT]]) -> Parser[OUT]:
 ParserReference = Generator[Parser[T], T, T]
 
 
-index = Parser(lambda _, index: Result.success(index, index))
-line_info = Parser(lambda stream, index: Result.success(index, line_info_at(stream, index)))
+index = Parser(lambda state: Result.success(state.index, state.index))
+line_info = Parser(lambda state: Result.success(state.index, line_info_at(state)))
 
 
 def success(val: OUT) -> Parser[OUT]:
-    return Parser(lambda _, index: Result.success(index, val))
+    return Parser(lambda state: Result.success(state.index, val))
 
 
 def fail(expected: str) -> Parser[None]:
-    return Parser(lambda _, index: Result.failure(index, expected))
+    return Parser(lambda state: Result.failure(state.index, expected))
 
 
 def string(s: str, transform: Callable[[str], str] = noop) -> Parser[str]:
@@ -496,11 +508,11 @@ def string(s: str, transform: Callable[[str], str] = noop) -> Parser[str]:
     transformed_s = transform(s)
 
     @Parser
-    def string_parser(stream: str, index: int) -> Result[str]:
-        if transform(stream[index : index + slen]) == transformed_s:
-            return Result.success(index + slen, s)
+    def string_parser(state: ParseState) -> Result[str]:
+        if transform(state.stream[state.index : state.index + slen]) == transformed_s:
+            return Result.success(state.index + slen, s)
         else:
-            return Result.failure(index, s)
+            return Result.failure(state.index, s)
 
     return string_parser
 
@@ -574,12 +586,12 @@ def regex(
         first_group, second_group, *groups = group
 
         @Parser
-        def regex_parser_tuple(stream: str, index: int) -> Result[Tuple[str, ...]]:
-            match = exp.match(stream, index)
+        def regex_parser_tuple(state: ParseState) -> Result[Tuple[str, ...]]:
+            match = exp.match(state.stream, state.index)
             if match:
                 return Result.success(match.end(), match.group(first_group, second_group, *groups))
             else:
-                return Result.failure(index, exp.pattern)
+                return Result.failure(state.index, exp.pattern)
 
         return regex_parser_tuple
 
@@ -591,12 +603,12 @@ def regex(
         target_group = group
 
     @Parser
-    def regex_parser(stream: str, index: int) -> Result[str]:
-        match = exp.match(stream, index)
+    def regex_parser(state: ParseState) -> Result[str]:
+        match = exp.match(state.stream, state.index)
         if match:
             return Result.success(match.end(), match.group(target_group))
         else:
-            return Result.failure(index, exp.pattern)
+            return Result.failure(state.index, exp.pattern)
 
     return regex_parser
 
@@ -668,17 +680,17 @@ def seq(*parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]:
 
 # One problem is that `test_item` and `match_item` are assumning that the input
 # type might not be str, but arbitrary types, including heterogeneous
-# lists. We have no generic parameter for the input stream type
+# lists. We have no generic parameter for the input state.stream type
 # yet, for simplicity.
 
 
 def test_char(func: Callable[[str], bool], description: str) -> Parser[str]:
     @Parser
-    def test_char_parser(stream: str, index: int) -> Result[str]:
-        if index < len(stream):
-            if func(stream[index]):
-                return Result.success(index + 1, stream[index])
-        return Result.failure(index, description)
+    def test_char_parser(state: ParseState) -> Result[str]:
+        if state.index < len(state.stream):
+            if func(state.stream[state.index]):
+                return Result.success(state.index + 1, state.stream[state.index])
+        return Result.failure(state.index, description)
 
     return test_char_parser
 
@@ -701,10 +713,10 @@ def char_from(string: str) -> Parser[str]:
 
 def peek(parser: Parser[OUT]) -> Parser[OUT]:
     @Parser
-    def peek_parser(stream: str, index: int) -> Result[OUT]:
-        result = parser(stream, index)
+    def peek_parser(state: ParseState) -> Result[OUT]:
+        result = parser(state)
         if result.status:
-            return Result.success(index, result.value)
+            return Result.success(state.index, result.value)
         else:
             return result
 
@@ -723,11 +735,11 @@ decimal_digit = char_from("0123456789")
 
 
 @Parser
-def eof(stream: str, index: int) -> Result[None]:
-    if index >= len(stream):
-        return Result.success(index, None)
+def eof(state: ParseState) -> Result[None]:
+    if state.index >= len(state.stream):
+        return Result.success(state.index, None)
     else:
-        return Result.failure(index, "EOF")
+        return Result.failure(state.index, "EOF")
 
 
 E = TypeVar("E", bound=enum.Enum)
@@ -770,18 +782,18 @@ OUT_D = TypeVar("OUT_D", bound=DataClassProtocol)
 
 def dataclass_parser(datatype: Type[OUT_D]) -> Parser[OUT_D]:
     @Parser
-    def data_parser(stream: str, index: int) -> Result[OUT_D]:
+    def data_parser(state: ParseState) -> Result[OUT_D]:
         parsed_fields: Dict[str, Any] = {}
         for dataclass_field in fields(datatype):
             if "parser" not in dataclass_field.metadata:
                 continue
             parser: Parser[Any] = dataclass_field.metadata["parser"]
-            result = parser(stream, index)
+            result = parser(state)
             if not result.status:
                 return result  # type: ignore
-            index = result.index
+            state = state.at(result.index)
             parsed_fields[dataclass_field.name] = result.value
 
-        return Result.success(index, datatype(**parsed_fields))
+        return Result.success(state.index, datatype(**parsed_fields))
 
     return data_parser

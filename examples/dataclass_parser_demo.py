@@ -91,11 +91,6 @@ class Grade:
         string("Student number, Score\n") >> dataclass_parser(Score).many() << regex(r"\n*")
     )
 
-    @property
-    def students_with_scores(self) -> List[StudentWithScore]:
-        names = {st.number: st.name for st in self.students}
-        return [StudentWithScore(names[score.number], score.number, score.score) for score in self.scores]
-
 
 @dataclass
 class School:
@@ -112,3 +107,44 @@ class File:
 if __name__ == "__main__":
     file = dataclass_parser(File).parse(text)
     print(file.schools)
+    assert file.schools == [
+        School(
+            name="Riverdale High",
+            grades=[
+                Grade(
+                    grade=1,
+                    students=[Student(number=0, name="Phoebe"), Student(number=1, name="Rachel")],
+                    scores=[Score(number=0, score=3), Score(number=1, score=7)],
+                ),
+                Grade(
+                    grade=2,
+                    students=[
+                        Student(number=0, name="Angela"),
+                        Student(number=1, name="Tristan"),
+                        Student(number=2, name="Aurora"),
+                    ],
+                    scores=[Score(number=0, score=6), Score(number=1, score=3), Score(number=2, score=9)],
+                ),
+            ],
+        ),
+        School(
+            name="Hogwarts",
+            grades=[
+                Grade(
+                    grade=1,
+                    students=[Student(number=0, name="Ginny"), Student(number=1, name="Luna")],
+                    scores=[Score(number=0, score=8), Score(number=1, score=7)],
+                ),
+                Grade(
+                    grade=2,
+                    students=[Student(number=0, name="Harry"), Student(number=1, name="Hermione")],
+                    scores=[Score(number=0, score=5), Score(number=1, score=10)],
+                ),
+                Grade(
+                    grade=3,
+                    students=[Student(number=0, name="Fred"), Student(number=1, name="George")],
+                    scores=[Score(number=0, score=0), Score(number=1, score=0)],
+                ),
+            ],
+        ),
+    ]

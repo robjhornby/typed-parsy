@@ -448,21 +448,24 @@ class Parser(Generic[OUT_co]):
 # pair, but each pair can be completely different from the next in the stream
 
 
-def generate(fn: Callable[[], Generator[Parser[Any], Any, OUT]]) -> Parser[OUT]:
+def generate(fn: Callable[[], Generator[Parser[T], T, OUT]]) -> Parser[OUT]:
     @Parser
     @wraps(fn)
     def generated(stream: str, index: int) -> Result[OUT]:
         # start up the generator
         iterator = fn()
-
-        result = None
-        value = None
+        next_parser = next(iterator)
+        result = next_parser(stream, index)
+        if not result.status:
+            return result  # type: ignore
+        value = result.value
+        index = result.index
         try:
             while True:
                 next_parser = iterator.send(value)
                 result = next_parser(stream, index).aggregate(result)
                 if not result.status:
-                    return result
+                    return result  # type: ignore
                 value = result.value
                 index = result.index
         except StopIteration as stop:

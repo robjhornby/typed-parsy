@@ -222,9 +222,6 @@ class Parser(Generic[OUT_co]):
     def result(self: Parser[Any], res: OUT2) -> Parser[OUT2]:
         return self >> success(res)
 
-    def many(self: Parser[OUT_co]) -> Parser[List[OUT_co]]:
-        return self.times(0, float("inf"))
-
     def times(self: Parser[OUT_co], min: int, max: int | float | None = None) -> Parser[List[OUT_co]]:
         the_max: int | float
         if max is None:
@@ -232,7 +229,6 @@ class Parser(Generic[OUT_co]):
         else:
             the_max = max
 
-        # TODO - must execute at least once
         @Parser
         def times_parser(state: ParseState) -> Result[List[OUT_co]]:
             values: List[OUT_co] = []
@@ -253,6 +249,9 @@ class Parser(Generic[OUT_co]):
             return Result.success(state.index, values).aggregate(result)
 
         return times_parser
+
+    def many(self: Parser[OUT_co]) -> Parser[List[OUT_co]]:
+        return self.times(0, float("inf"))
 
     def at_most(self: Parser[OUT_co], n: int) -> Parser[List[OUT_co]]:
         return self.times(0, n)
@@ -741,7 +740,6 @@ def string_from(*strings: str, transform: Callable[[str], str] = noop) -> Parser
     return reduce(operator.or_, [string(s, transform) for s in sorted(strings, key=len, reverse=True)])
 
 
-# TODO drop bytes support here
 def char_from(string: str) -> Parser[str]:
     return test_char(lambda c: c in string, "[" + string + "]")
 

@@ -28,7 +28,7 @@ from typing import (
     overload,
 )
 
-from typing_extensions import Literal, ParamSpec, Protocol, TypeVarTuple, Unpack, TypeGuard
+from typing_extensions import Literal, ParamSpec, Protocol, TypeGuard, TypeVarTuple, Unpack
 
 OUT = TypeVar("OUT")
 OUT1 = TypeVar("OUT1")
@@ -80,6 +80,9 @@ class ParseState:
 
     def at(self: ParseState, index: int) -> ParseState:
         return ParseState(self.stream, index)
+
+    def apply(self, parser: Parser[OUT]) -> Tuple[OUT, ParseState]:
+        return parser.parse_state(self)
 
 
 def line_info_at(state: ParseState) -> Tuple[int, int]:
@@ -258,9 +261,12 @@ class Parser(Generic[OUT_co]):
         return self.times(min=n, max=float("inf"))
 
     @overload
-    def optional(self: Parser[OUT1], default: Literal[None] = None) -> Parser[OUT1 | None]: ...
+    def optional(self: Parser[OUT1], default: Literal[None] = None) -> Parser[OUT1 | None]:
+        ...
+
     @overload
-    def optional(self: Parser[OUT1], default: OUT2) -> Parser[OUT1 | OUT2]:...
+    def optional(self: Parser[OUT1], default: OUT2) -> Parser[OUT1 | OUT2]:
+        ...
 
     def optional(self: Parser[OUT1], default: Optional[OUT2] = None) -> Parser[OUT1 | Optional[OUT2]]:
         return self.times(0, 1).map(lambda v: v[0] if v else default)
@@ -309,7 +315,7 @@ class Parser(Generic[OUT_co]):
         if max == 0:
             return zero_times
 
-        res = (self & (sep >> self).times(min - 1, max - 1)).combine(lambda first, repeats: [first, *repeats])
+        res = self.as_list() + (sep >> self).times(min - 1, max - 1)
         if min == 0:
             res = res | zero_times
         return res
@@ -425,12 +431,15 @@ class Parser(Generic[OUT_co]):
 
         return and_parser
 
-    def join(self: Parser[OUT1], other: Parser[OUT2]) -> Parser[tuple[OUT1, OUT2]]:
+    def pair(self: Parser[OUT1], other: Parser[OUT2]) -> Parser[tuple[OUT1, OUT2]]:
         """TODO alternative name for `&`, decide on naming"""
         return self & other
 
     def as_tuple(self: Parser[OUT]) -> Parser[Tuple[OUT]]:
         return self.map(lambda value: (value,))
+
+    def as_list(self: Parser[OUT]) -> Parser[List[OUT]]:
+        return self.map(lambda value: [value])
 
     def append(self: Parser[Tuple[Unpack[OUT_T]]], other: Parser[OUT2]) -> Parser[Tuple[Unpack[OUT_T], OUT2]]:
         """
@@ -551,16 +560,12 @@ def regex(
 
 
 @overload
-def regex(
-    pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: TUP2[str | int]
-) -> Parser[TUP2[str]]:
+def regex(pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: TUP2[str | int]) -> Parser[TUP2[str]]:
     ...
 
 
 @overload
-def regex(
-    pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: TUP3[str | int]
-) -> Parser[TUP3[str]]:
+def regex(pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: TUP3[str | int]) -> Parser[TUP3[str]]:
     ...
 
 
@@ -584,17 +589,28 @@ def regex(
     ...
 
 
-def at_least_len_2(value: TUP1[T] | TUP2[T] | TUP3[T] | TUP4[T] | TUP5[T] | Tuple[T, ...]) -> TypeGuard[TUP2[T] | TUP3[T] | TUP4[T] | TUP5[T] | Tuple[T, ...]]:
+def at_least_len_2(
+    value: TUP1[T] | TUP2[T] | TUP3[T] | TUP4[T] | TUP5[T] | Tuple[T, ...]
+) -> TypeGuard[TUP2[T] | TUP3[T] | TUP4[T] | TUP5[T] | Tuple[T, ...]]:
     return len(value) >= 2
+
 
 def has_len_1(value: TUP1[T] | TUP2[T] | TUP3[T] | TUP4[T] | TUP5[T] | Tuple[T, ...]) -> TypeGuard[TUP1[T]]:
     return len(value) == 1
+
 
 def regex(
     pattern: PatternType,
     *,
     flags: re.RegexFlag = re.RegexFlag(0),
-    group: str | int | TUP1[str | int] | TUP2[str | int] | TUP3[str | int] | TUP4[str | int] | TUP5[str | int] | Tuple[str | int, ...] = 0,
+    group: str
+    | int
+    | TUP1[str | int]
+    | TUP2[str | int]
+    | TUP3[str | int]
+    | TUP4[str | int]
+    | TUP5[str | int]
+    | Tuple[str | int, ...] = 0,
 ) -> Parser[str | Tuple[str, ...]]:
     if isinstance(pattern, str):
         exp = re.compile(pattern, flags)

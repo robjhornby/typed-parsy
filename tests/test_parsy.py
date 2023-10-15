@@ -118,11 +118,11 @@ class TestParser(unittest.TestCase):
         self.assertEqual(parser.parse("1A"), ("1", "A"))
 
     def test_append(self):
-        parser = digit.join(letter).append(letter)
+        parser = digit.pair(letter).append(letter)
         self.assertEqual(parser.parse("1AB"), ("1", "A", "B"))
 
     def test_combine(self):
-        parser = digit.join(letter).append(letter).combine(lambda a, b, c: (c + b + a))
+        parser = digit.pair(letter).append(letter).combine(lambda a, b, c: (c + b + a))
         self.assertEqual(parser.parse("1AB"), "BA1")
 
     # def test_combine_mixed_types(self):

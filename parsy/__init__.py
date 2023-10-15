@@ -788,22 +788,19 @@ def from_enum(enum_cls: type[E], transform: Callable[[str], str] = noop) -> Pars
 
 
 # Dataclass parsers
-
-
 def parser_field(
     parser: Parser[OUT],
     *,
-    default: OUT = ...,
-    init: bool = ...,
-    repr: bool = ...,
-    hash: Union[bool, None] = ...,
-    compare: bool = ...,
-    metadata: Mapping[Any, Any] = ...,
+    init: bool = True,
+    repr: bool = True,
+    hash: Union[bool, None] = None,
+    compare: bool = True,
+    metadata: Union[Mapping[Any, Any], None] = None,
 ) -> OUT:
-    if metadata is Ellipsis:
+    if metadata is None:
         metadata = {}
     return field(
-        default=default, init=init, repr=repr, hash=hash, compare=compare, metadata={**metadata, "parser": parser}
+        init=init, repr=repr, hash=hash, compare=compare, metadata={**metadata, "parser": parser}
     )
 
 
@@ -816,6 +813,7 @@ OUT_D = TypeVar("OUT_D", bound=DataClassProtocol)
 
 
 def dataclass_parser(datatype: Type[OUT_D]) -> Parser[OUT_D]:
+    """Parse all fields of a dataclass parser in order."""
     @Parser
     def data_parser(state: ParseState) -> Result[OUT_D]:
         parsed_fields: Dict[str, Any] = {}

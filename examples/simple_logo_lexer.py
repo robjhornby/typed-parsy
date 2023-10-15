@@ -16,7 +16,7 @@ command = string_from("fd", "bk", "rt", "lt")
 number = regex(r"[0-9]+").map(int)
 optional_whitespace = regex(r"\s*")
 eol = string("\n")
-line = (optional_whitespace >> command).join(whitespace >> number) << (eof | eol | (whitespace >> eol))
+line = (optional_whitespace >> command).pair(whitespace >> number) << (eof | eol | (whitespace >> eol))
 lexer = line.many()
 
 

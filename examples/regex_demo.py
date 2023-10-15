@@ -18,6 +18,10 @@ assert named_group.parse("abc") == "c"
 tuple_int_groups = regex(r"a(b)(c)", group=(1, 2))
 assert tuple_int_groups.parse("abc") == ("b", "c")
 
+# Use a 1-tuple group. Python's `re` module treats a 1-tuple group the same as a single integer: so do we
+tuple_int_groups = regex(r"a(b)", group=(1,))
+assert tuple_int_groups.parse("ab") == "b"
+
 # Use multiple groups specified by a tuple of named capture groups
 
 tuple_int_groups = regex(r"a(?P<first>b)(?P<second>c)", group=("first", "second"))

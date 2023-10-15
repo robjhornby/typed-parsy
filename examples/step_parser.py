@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Callable
 
 from parsy import OUT, Parser, ParseState, Result, regex, success, whitespace
 
@@ -11,10 +12,6 @@ class State:
         result, self.state = parser.parse_state(self.state)
         return result
 
-    @staticmethod
-    def start(state: ParseState):
-        return State(state)
-
     def success(self, value: OUT) -> Result[OUT]:
         return Result.success(self.state.index, value)
 
@@ -26,24 +23,48 @@ class Person:
     note: str
 
 
-@Parser
-def person_parser(parse_state: ParseState) -> Result[Person]:
-    state = State.start(parse_state)
-    name = state.apply(regex(r"\w+") << whitespace)
+def stateful_parser(fn: Callable[[State], Result[OUT]]) -> Parser[OUT]:
+    @Parser
+    def the_parser(parse_state: ParseState) -> Result[OUT]:
+        state = State(parse_state)
+        return fn(state)
 
-    # But every parser starts by matching a string anyway: other types only come
-    # from further function logic, which doesn't need to be part of the parser when
-    # using a generator:
-    age = state.apply((regex(r"\d+") << whitespace).map(int))
-
-    if age % 2:
-        # Parsing depends on previously parsed values
-        note = state.apply(regex(".+") >> success("Odd age"))
-    else:
-        note = state.apply(regex(".+"))
-
-    return state.success(Person(name, age, note))
+    return the_parser
 
 
-result = person_parser.parse("Rob 29 note")
-print(result)
+def test_stateful_parser():
+    @stateful_parser
+    def person_parser(state: State) -> Result[Person]:
+
+        name = state.apply(regex(r"\w+") << whitespace)
+        age = state.apply((regex(r"\d+") << whitespace).map(int))
+
+        if age % 2:
+            # Parsing depends on previously parsed values
+            note = state.apply(regex(".+") >> success("Odd age"))
+        else:
+            note = state.apply(regex(".+"))
+
+        return state.success(Person(name, age, note))
+
+    result = person_parser.parse("Rob 29 note")
+    assert result == Person("Rob", 29, "Odd age")
+
+
+def test_stateful_parser_without_mutation():
+    @Parser
+    def alternative(state: ParseState) -> Result[Person]:
+
+        name, state = state.apply(regex(r"\w+") << whitespace)
+        age, state = state.apply((regex(r"\d+") << whitespace).map(int))
+
+        if age % 2:
+            # Parsing depends on previously parsed values
+            note, state = state.apply(regex(".+") >> success("Odd age"))
+        else:
+            note, state = state.apply(regex(".+"))
+
+        return Result.success(state.index, Person(name, age, note))
+
+    result = alternative.parse("Rob 29 note")
+    assert result == Person("Rob", 29, "Odd age")

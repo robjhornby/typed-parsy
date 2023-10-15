@@ -28,7 +28,7 @@ from typing import (
     overload,
 )
 
-from typing_extensions import Literal, ParamSpec, Protocol, TypeVarTuple, Unpack
+from typing_extensions import Literal, ParamSpec, Protocol, TypeVarTuple, Unpack, TypeGuard
 
 OUT = TypeVar("OUT")
 OUT1 = TypeVar("OUT1")
@@ -50,6 +50,14 @@ T_co = TypeVar("T_co", covariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 
 _T_co = TypeVar("_T_co", covariant=True)
+
+TUPLE_T = TypeVar("TUPLE_T")
+TUP1 = Tuple[TUPLE_T]
+TUP2 = Tuple[TUPLE_T, TUPLE_T]
+TUP3 = Tuple[TUPLE_T, TUPLE_T, TUPLE_T]
+TUP4 = Tuple[TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T]
+TUP5 = Tuple[TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T]
+TUP6 = Tuple[TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T]
 
 
 class SupportsAdd(Protocol[_T_contra, _T_co]):
@@ -249,7 +257,12 @@ class Parser(Generic[OUT_co]):
     def at_least(self: Parser[OUT_co], n: int) -> Parser[List[OUT_co]]:
         return self.times(min=n, max=float("inf"))
 
-    def optional(self: Parser[OUT1], default: OUT2 = None) -> Parser[OUT1 | OUT2]:
+    @overload
+    def optional(self: Parser[OUT1], default: Literal[None] = None) -> Parser[OUT1 | None]: ...
+    @overload
+    def optional(self: Parser[OUT1], default: OUT2) -> Parser[OUT1 | OUT2]:...
+
+    def optional(self: Parser[OUT1], default: Optional[OUT2] = None) -> Parser[OUT1 | Optional[OUT2]]:
         return self.times(0, 1).map(lambda v: v[0] if v else default)
 
     def until(
@@ -539,25 +552,15 @@ def regex(
 
 @overload
 def regex(
-    pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: Tuple[str | int, str | int]
-) -> Parser[Tuple[str, str]]:
+    pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: TUP2[str | int]
+) -> Parser[TUP2[str]]:
     ...
 
 
 @overload
 def regex(
-    pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: Tuple[str | int, str | int, str | int]
-) -> Parser[Tuple[str, str, str]]:
-    ...
-
-
-@overload
-def regex(
-    pattern: PatternType,
-    *,
-    flags: re.RegexFlag = re.RegexFlag(0),
-    group: Tuple[str | int, str | int, str | int, str | int],
-) -> Parser[Tuple[str, str, str, str]]:
+    pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: TUP3[str | int]
+) -> Parser[TUP3[str]]:
     ...
 
 
@@ -566,23 +569,39 @@ def regex(
     pattern: PatternType,
     *,
     flags: re.RegexFlag = re.RegexFlag(0),
-    group: Tuple[str | int, str | int, str | int, str | int, str | int],
-) -> Parser[Tuple[str, str, str, str, str]]:
+    group: TUP4[str | int],
+) -> Parser[TUP4[str]]:
     ...
 
+
+@overload
+def regex(
+    pattern: PatternType,
+    *,
+    flags: re.RegexFlag = re.RegexFlag(0),
+    group: TUP5[str | int],
+) -> Parser[TUP5[str]]:
+    ...
+
+
+def at_least_len_2(value: TUP1[T] | TUP2[T] | TUP3[T] | TUP4[T] | TUP5[T] | Tuple[T, ...]) -> TypeGuard[TUP2[T] | TUP3[T] | TUP4[T] | TUP5[T] | Tuple[T, ...]]:
+    return len(value) >= 2
+
+def has_len_1(value: TUP1[T] | TUP2[T] | TUP3[T] | TUP4[T] | TUP5[T] | Tuple[T, ...]) -> TypeGuard[TUP1[T]]:
+    return len(value) == 1
 
 def regex(
     pattern: PatternType,
     *,
     flags: re.RegexFlag = re.RegexFlag(0),
-    group: str | int | Tuple[str | int, ...] = 0,
+    group: str | int | TUP1[str | int] | TUP2[str | int] | TUP3[str | int] | TUP4[str | int] | TUP5[str | int] | Tuple[str | int, ...] = 0,
 ) -> Parser[str | Tuple[str, ...]]:
     if isinstance(pattern, str):
         exp = re.compile(pattern, flags)
     else:
         exp = pattern
 
-    if isinstance(group, tuple) and len(group) >= 2:
+    if isinstance(group, tuple) and at_least_len_2(group):
         first_group, second_group, *groups = group
 
         @Parser
@@ -595,7 +614,7 @@ def regex(
 
         return regex_parser_tuple
 
-    if isinstance(group, tuple) and len(group) == 1:
+    if isinstance(group, tuple) and has_len_1(group):
         target_group = group[0]
     elif isinstance(group, tuple):
         target_group = 0

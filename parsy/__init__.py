@@ -799,9 +799,7 @@ def parser_field(
 ) -> OUT:
     if metadata is None:
         metadata = {}
-    return field(
-        init=init, repr=repr, hash=hash, compare=compare, metadata={**metadata, "parser": parser}
-    )
+    return field(init=init, repr=repr, hash=hash, compare=compare, metadata={**metadata, "parser": parser})
 
 
 class DataClassProtocol(Protocol):
@@ -814,6 +812,7 @@ OUT_D = TypeVar("OUT_D", bound=DataClassProtocol)
 
 def dataclass_parser(datatype: Type[OUT_D]) -> Parser[OUT_D]:
     """Parse all fields of a dataclass parser in order."""
+
     @Parser
     def data_parser(state: ParseState) -> Result[OUT_D]:
         parsed_fields: Dict[str, Any] = {}
@@ -826,6 +825,37 @@ def dataclass_parser(datatype: Type[OUT_D]) -> Parser[OUT_D]:
                 return result  # type: ignore
             state = state.at(result.index)
             parsed_fields[dataclass_field.name] = result.value
+
+        return Result.success(state.index, datatype(**parsed_fields))
+
+    return data_parser
+
+
+def dataclass_permutation_parser(datatype: Type[OUT_D]) -> Parser[OUT_D]:
+    """Parse all fields of a dataclass parser in any order."""
+
+    @Parser
+    def data_parser(state: ParseState) -> Result[OUT_D]:
+        parsed_fields: Dict[str, Any] = {}
+        parsers: Dict[str, Parser[Any]] = {
+            field.name: field.metadata["parser"] for field in fields(datatype) if "parser" in field.metadata
+        }
+        failures: List[str] = []
+        while parsers:
+            failures = []
+            for field_name, parser in tuple(parsers.items()):
+                result = parser(state)
+                if not result.status:
+                    failures.append(f"'{field_name}': {', '.join(result.expected)}")
+                    continue
+
+                state = state.at(result.index)
+                parsed_fields[field_name] = result.value
+                parsers.pop(field_name)
+                break
+            else:
+                # No parsers matched
+                return Result.failure(state.index, f"Any of: {', '.join(failures)}")
 
         return Result.success(state.index, datatype(**parsed_fields))
 

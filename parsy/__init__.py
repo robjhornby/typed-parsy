@@ -16,10 +16,12 @@ from typing import (
     FrozenSet,
     Generator,
     Generic,
+    Iterator,
     List,
     Mapping,
     Optional,
     Pattern,
+    Sequence,
     Tuple,
     Type,
     TypeVar,
@@ -83,6 +85,9 @@ class ParseState:
 
     def apply(self, parser: Parser[OUT]) -> Tuple[OUT, ParseState]:
         return parser.parse_state(self)
+
+    def success(self, value: OUT) -> Result[OUT]:
+        return Result.success(self.index, value)
 
 
 def line_info_at(state: ParseState) -> Tuple[int, int]:
@@ -151,6 +156,11 @@ class Result(Generic[OUT_co]):
             return Result(self.status, self.index, self.value, other.furthest, other.expected)
 
 
+class ResultAsException(RuntimeError, Generic[OUT_co]):
+    def __init__(self, result: Result[OUT_co]):
+        self.result: Result[OUT_co] = result
+
+
 class Parser(Generic[OUT_co]):
     """
     A Parser is an object that wraps a function whose arguments are
@@ -166,7 +176,10 @@ class Parser(Generic[OUT_co]):
         self.wrapped_fn: Callable[[ParseState], Result[OUT_co]] = wrapped_fn
 
     def __call__(self, state: ParseState) -> Result[OUT_co]:
-        return self.wrapped_fn(state)
+        try:
+            return self.wrapped_fn(state)
+        except ResultAsException as exception:  # type: ignore
+            return exception.result  # type: ignore
 
     def parse(self, stream: str) -> OUT_co:
         """Parse a string and return the result or raise a ParseError."""
@@ -192,7 +205,7 @@ class Parser(Generic[OUT_co]):
         if result.status:
             return (result.value, state.at(result.index))
         else:
-            raise ParseError(result.expected, state.at(result.furthest))
+            raise ResultAsException(result)
 
     def bind(self: Parser[OUT1], bind_fn: Callable[[OUT1], Parser[OUT2]]) -> Parser[OUT2]:
         @Parser
@@ -454,6 +467,9 @@ class Parser(Generic[OUT_co]):
         """
         return self.bind(lambda value: success(combine_fn(*value)))
 
+    def zip(self: Parser[OUT], iterable: Sequence[OUT2]) -> Parser[List[Tuple[OUT2, OUT]]]:
+        return self.times(len(iterable)).map(lambda values: list(zip(iterable, values)))
+
     # haskelley operators, for fun #
 
     # >>
@@ -466,44 +482,14 @@ class Parser(Generic[OUT_co]):
         return self.skip(other)
 
 
-# TODO:
-# I think @generate is unfixable. It's not surprising, because
-# we are doing something genuninely unusual with generator functions.
-
-# The return value of a `@generate` parser is now OK.
-
-# But we have no type checking within a user's @generate function.
-
-# The big issue is that each `val = yield parser` inside a @generate parser has
-# a different type, and we'd like those to be typed checked. But the
-# `Generator[...]` expects a homogeneous state.stream of yield and send types,
-# whereas we have pairs of yield/send types which need to match within the
-# pair, but each pair can be completely different from the next in the state.stream
-
-
-def generate(fn: Callable[[], Generator[Parser[T], T, OUT]]) -> Parser[OUT]:
+def forward_parser(fn: Callable[[], Iterator[Parser[T]]]) -> Parser[T]:
     @Parser
     @wraps(fn)
-    def generated(state: ParseState) -> Result[OUT]:
-        # start up the generator
+    def generated(state: ParseState) -> Result[T]:
         iterator = fn()
-        next_parser = next(iterator)
-        result = next_parser(state)
-        if not result.status:
-            return result  # type: ignore
-        value = result.value
-        state = state.at(result.index)
-        try:
-            while True:
-                next_parser = iterator.send(value)
-                result = next_parser(state).aggregate(result)
-                if not result.status:
-                    return result  # type: ignore
-                value = result.value
-                state = state.at(result.index)
-        except StopIteration as stop:
-            returnVal = stop.value
-            return Result.success(state.index, returnVal).aggregate(result)
+        parser = next(iterator)
+        result = parser(state)
+        return result
 
     return generated
 
@@ -786,7 +772,7 @@ def from_enum(enum_cls: type[E], transform: Callable[[str], str] = noop) -> Pars
 
 
 # Dataclass parsers
-def parser_field(
+def take(
     parser: Parser[OUT],
     *,
     init: bool = True,
@@ -808,11 +794,11 @@ class DataClassProtocol(Protocol):
 OUT_D = TypeVar("OUT_D", bound=DataClassProtocol)
 
 
-def dataclass_parser(datatype: Type[OUT_D]) -> Parser[OUT_D]:
+def gather(datatype: Type[OUT_D]) -> Parser[OUT_D]:
     """Parse all fields of a dataclass parser in order."""
 
     @Parser
-    def data_parser(state: ParseState) -> Result[OUT_D]:
+    def parser(state: ParseState) -> Result[OUT_D]:
         parsed_fields: Dict[str, Any] = {}
         for dataclass_field in fields(datatype):
             if "parser" not in dataclass_field.metadata:
@@ -826,7 +812,7 @@ def dataclass_parser(datatype: Type[OUT_D]) -> Parser[OUT_D]:
 
         return Result.success(state.index, datatype(**parsed_fields))
 
-    return data_parser
+    return parser
 
 
 def dataclass_permutation_parser(datatype: Type[OUT_D]) -> Parser[OUT_D]:

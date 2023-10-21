@@ -2,6 +2,8 @@
 Generating a parser
 ===================
 
+TODO remove this file
+
 .. currentmodule:: parsy
 .. function:: generate
 
@@ -109,6 +111,8 @@ where there is logic that is conditional upon earlier parsed values.
 
 Implementing recursive definitions
 ----------------------------------
+
+TODO document alternative approach to forward-definitions
 
 A fourth examples shows how you can use this syntax for grammars that you would
 like to define recursively (or mutually recursively).

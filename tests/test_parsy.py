@@ -2,20 +2,19 @@
 import enum
 import re
 import unittest
-from typing import Any, Generator, List, Tuple, Union
+from typing import Iterator, List, Tuple, Union
 
 from parsy import (
     ParseError,
     Parser,
-    ParserReference,
     ParseState,
     Result,
     any_char,
     char_from,
     decimal_digit,
     digit,
+    forward_parser,
     from_enum,
-    generate,
     letter,
     line_info,
     line_info_at,
@@ -137,16 +136,16 @@ class TestParser(unittest.TestCase):
         self.assertEqual(parser.parse(""), "")
         self.assertEqual(parser.parse("abc"), "abc")
 
-    def test_generate(self):
+    def test_state_parser(self):
         x = y = None
 
-        @generate
-        def xy() -> Generator[Parser[Any], Any, int]:
+        @Parser
+        def xy(s: ParseState) -> Result[int]:
             nonlocal x
             nonlocal y
-            x = yield string("x")
-            y = yield string("y")
-            return 3
+            x, s = s.apply(string("x"))
+            y, s = s.apply(string("y"))
+            return s.success(3)
 
         self.assertEqual(xy.parse("xy"), 3)
         self.assertEqual(x, "x")
@@ -186,12 +185,13 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ex.expected, frozenset(["a", "b", "c"]))
         self.assertEqual(str(ex), "expected one of 'a', 'b', 'c' at 0:0")
 
-    def test_generate_backtracking(self):
-        @generate
-        def xy() -> Generator[Parser[Any], Any, None]:
-            yield string("x")
-            yield string("y")
+    def test_state_parser_backtracking(self):
+        @Parser
+        def xy(s: ParseState) -> Result[None]:
+            _, s = s.apply(string("x"))
+            _, s = s.apply(string("y"))
             assert False
+            return s.success(None)
 
         parser = xy | string("z")
         # should not finish executing xy()
@@ -551,11 +551,11 @@ class TestParser(unittest.TestCase):
         self.assertRaises(ParseError, decimal_digit.parse, "¹")
 
     def test_line_info(self):
-        @generate
-        def foo() -> Generator[Any, Any, Tuple[str, Tuple[int, int]]]:
-            i = yield line_info
-            l = yield any_char
-            return (l, i)
+        @Parser
+        def foo(s: ParseState) -> Result[Tuple[str, Tuple[int, int]]]:
+            i, s = s.apply(line_info)
+            l, s = s.apply(any_char)
+            return s.success((l, i))
 
         self.assertEqual(
             foo.many().parse("AB\nCD"),
@@ -649,9 +649,9 @@ def test_recursive_parser():
     """
     digits = regex("[0-9]+").map(int)
 
-    @generate
-    def _parser() -> ParserReference[RT]:
-        return (yield parser)
+    @forward_parser
+    def _parser() -> Iterator[Parser[RT]]:
+        yield parser
 
     # The explicit type annotation of `Parser[RT]` could be omitted
     parser: Parser[RT] = digits | string("(") >> _parser.sep_by(string(" ")) << string(")")

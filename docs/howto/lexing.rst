@@ -74,6 +74,8 @@ Calculator
 Our second example illustrates lexing and then parsing a sequence of
 mathematical operations, e.g "1 + 2 * (3 - 4.5)", with precedence.
 
+TODO modify docs based on updated example
+
 In this case, while doing the parsing stage, instead of building up an AST of
 objects representing the operations, the parser actually evaluates the
 expression.

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 
-from parsy import dataclass_parser, parser_field, regex, string
+from parsy import gather, regex, string, take
 
 text = """Sample text
 
@@ -64,14 +64,14 @@ any_text = regex(r"[^\n]+")
 
 @dataclass
 class Student:
-    number: int = parser_field(integer << string(", "))
-    name: str = parser_field(any_text << string("\n"))
+    number: int = take(integer << string(", "))
+    name: str = take(any_text << string("\n"))
 
 
 @dataclass
 class Score:
-    number: int = parser_field(integer << string(", "))
-    score: int = parser_field(integer << string("\n"))
+    number: int = take(integer << string(", "))
+    score: int = take(integer << string("\n"))
 
 
 @dataclass
@@ -83,29 +83,25 @@ class StudentWithScore:
 
 @dataclass
 class Grade:
-    grade: int = parser_field(string("Grade = ") >> integer << string("\n"))
-    students: List[Student] = parser_field(
-        string("Student number, Name\n") >> dataclass_parser(Student).many() << regex(r"\n*")
-    )
-    scores: List[Score] = parser_field(
-        string("Student number, Score\n") >> dataclass_parser(Score).many() << regex(r"\n*")
-    )
+    grade: int = take(string("Grade = ") >> integer << string("\n"))
+    students: List[Student] = take(string("Student number, Name\n") >> gather(Student).many() << regex(r"\n*"))
+    scores: List[Score] = take(string("Student number, Score\n") >> gather(Score).many() << regex(r"\n*"))
 
 
 @dataclass
 class School:
-    name: str = parser_field(string("School = ") >> any_text << string("\n"))
-    grades: List[Grade] = parser_field(dataclass_parser(Grade).many())
+    name: str = take(string("School = ") >> any_text << string("\n"))
+    grades: List[Grade] = take(gather(Grade).many())
 
 
 @dataclass
 class File:
-    header: str = parser_field(regex(r"[\s\S]*?(?=School =)"))
-    schools: List[School] = parser_field(dataclass_parser(School).many())
+    header: str = take(regex(r"[\s\S]*?(?=School =)"))
+    schools: List[School] = take(gather(School).many())
 
 
 if __name__ == "__main__":
-    file = dataclass_parser(File).parse(text)
+    file = gather(File).parse(text)
     print(file.schools)
     assert file.schools == [
         School(

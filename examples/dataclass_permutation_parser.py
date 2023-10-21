@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 
-from parsy import dataclass_permutation_parser, eof, parser_field, regex, whitespace
+from parsy import dataclass_permutation_parser, eof, regex, take, whitespace
 
 
 def test_permutation_parser():
     @dataclass
     class Person:
-        name: str = parser_field(regex(r"[a-zA-Z]+") << (whitespace | eof).desc("name"))
-        age: int = parser_field(regex(r"\d+").map(int).desc("An integer age") << (whitespace | eof))
-        id: str = parser_field(regex(r"\d{3}-\d{3}") << (whitespace | eof))
+        name: str = take(regex(r"[a-zA-Z]+") << (whitespace | eof).desc("name"))
+        age: int = take(regex(r"\d+").map(int).desc("An integer age") << (whitespace | eof))
+        id: str = take(regex(r"\d{3}-\d{3}") << (whitespace | eof))
 
     person_parser = dataclass_permutation_parser(Person)
 

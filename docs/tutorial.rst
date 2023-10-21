@@ -263,88 +263,7 @@ Unfortunately, it gets ugly pretty fast, and in Python we don’t have Haskell�
 ``do`` notation to tidy it up. But thankfully we can use generators and the
 ``yield`` keyword to great effect.
 
-We use a generator function and convert it into a parser by using the
-:func:`generate` decorator. The idea is that you ``yield`` every parser that you
-want to run, and receive the result of that parser as the value of the yield
-expression. You can then put parsers together using any logic you like, and
-finally return the value.
-
-An equivalent parser to the one above can be written like this:
-
-.. code-block:: python
-
-   from parsy import generate
-
-   @generate
-   def fulldate():
-       y = yield year
-       yield dash  # implicit skip, since we do nothing with the value
-       m = yield month
-       yield dash
-       d = yield day
-       return date(y, m, d)
-
-Notice how this follows the previous definition of ``fulldate`` using ``seq``
-with keyword arguments. It’s more verbose than before, but provides a good
-starting point for our next set of requirements.
-
-First of all, we need to express optional components - that is we need to be
-able to handle missing dashes, and return what we’ve got so far rather than
-failing the whole parse.
-
-:class:`Parser` has a set of methods that convert parsers into ones that allow
-multiples of the parser - including :meth:`Parser.many`, :meth:`Parser.times`,
-:meth:`Parser.at_most` and :meth:`Parser.at_least`. There is also
-:meth:`Parser.optional` which allows matching zero times (in which case the
-parser will return the default value specified or ``None`` otherwise),
-or exactly once - just what we need in this case.
-
-We also need to do checking on the month and the day. We’ll take a shortcut and
-use the built-in ``datetime.date`` class to do the validation for us. However,
-rather than allow exceptions to be raised, we convert the exception into a
-parsing failure.
-
-
-.. code-block:: python
-
-   from parsy import fail, generate
-
-   optional_dash = dash.optional()
-
-   @generate
-   def full_or_partial_date():
-       d = None
-       m = None
-       y = yield year
-       dash1 = yield optional_dash
-       if dash1 is not None:
-           m = yield month
-           dash2 = yield optional_dash
-           if dash2 is not None:
-                d = yield day
-       if m is not None:
-          if m < 1 or m > 12:
-              return fail("month must be in 1..12")
-       if d is not None:
-          try:
-              datetime.date(y, m, d)
-          except ValueError as e:
-              return fail(e.args[0])
-
-       return (y, m, d)
-
-
-This works now works as expected:
-
-.. code-block:: python
-
-   >>> full_or_partial_date.parse("2017-02")
-   (2017, 2, None)
-   >>> full_or_partial_date.parse("2017-02-29")
-   ParseError: expected 'day is out of range for month' at 0:10
-
-We could of course use a custom object in the final line to return a more
-convenient data type, if wanted.
+TODO replace the previous `@generate` example removed from here
 
 Alternatives and backtracking
 =============================
@@ -438,19 +357,7 @@ simple classes). We suggest `dataclasses
 <https://docs.python.org/3/library/collections.html#collections.namedtuple>`_
 for simple cases.
 
-For combining parsed data into these data structures, you can:
-
-1. Use :meth:`Parser.map`, :meth:`Parser.combine` and :meth:`Parser.combine_dict`,
-   often in conjunction with :func:`seq`.
-
-   See the :doc:`SQL SELECT example
-   </howto/other_examples/>` for an example of this approach.
-
-2. Use the ``@generate`` decorator as above, and manually call the data
-   structure constructor with the pieces, as in ``full_date`` or
-   ``full_or_partial_date`` above, but with your own data structure instead of a
-   tuple or datetime in the final line.
-
+TODO document data class parsing
 
 Learn more
 ==========

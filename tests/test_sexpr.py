@@ -1,7 +1,7 @@
 import unittest
-from typing import List, TypeVar, Union
+from typing import Iterator, List, TypeVar, Union
 
-from parsy import Parser, ParserReference, generate, regex, string
+from parsy import Parser, forward_parser, regex, string
 
 whitespace = regex(r"\s+")
 comment = regex(r";.*")
@@ -26,10 +26,10 @@ atom = true | false | number | symbol
 PT = Union[str, bool, int, List["PT"]]
 
 
-@generate
-def _expr() -> ParserReference[PT]:
+@forward_parser
+def _expr() -> Iterator[Parser[PT]]:
     # expr is referred to before it's defined
-    return (yield expr)
+    yield expr
 
 
 # expr is indirectly used via _expr

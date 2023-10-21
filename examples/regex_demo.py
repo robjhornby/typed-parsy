@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from parsy import dataclass_parser, parser_field, regex, string
+from parsy import gather, regex, string, take
 
 # Default group is 0 (everything)
 default = regex(r"abc")
@@ -43,10 +43,10 @@ digits = regex(r"[\d]+")
 
 @dataclass
 class Sum:
-    id: str = parser_field(digits << string(": "))
-    first: int = parser_field(digits.map(int) << string(" + "))
-    second: int = parser_field(digits.map(int))
+    id: str = take(digits << string(": "))
+    first: int = take(digits.map(int) << string(" + "))
+    second: int = take(digits.map(int))
 
 
-d_parser = dataclass_parser(Sum)
+d_parser = gather(Sum)
 print(d_parser.parse("123: 3 + 4"))

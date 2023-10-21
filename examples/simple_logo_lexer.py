@@ -10,7 +10,7 @@ etc.
 
 from dataclasses import dataclass
 
-from parsy import dataclass_parser, eof, parser_field, regex, string, string_from, whitespace
+from parsy import eof, gather, regex, string, string_from, take, whitespace
 
 command = string_from("fd", "bk", "rt", "lt")
 number = regex(r"[0-9]+").map(int)
@@ -38,11 +38,11 @@ Alternative which creates a more structured output
 
 @dataclass
 class Instruction:
-    command: str = parser_field(optional_whitespace >> command)
-    distance: int = parser_field(whitespace >> number << (eof | eol | (whitespace >> eol)))
+    command: str = take(optional_whitespace >> command)
+    distance: int = take(whitespace >> number << (eof | eol | (whitespace >> eol)))
 
 
-instruction_parser = dataclass_parser(Instruction).many()
+instruction_parser = gather(Instruction).many()
 
 assert (
     instruction_parser.parse(

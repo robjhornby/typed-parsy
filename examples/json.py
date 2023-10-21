@@ -1,6 +1,6 @@
-from typing import Dict, List, TypeVar, Union
+from typing import Dict, Iterator, List, TypeVar, Union
 
-from parsy import Parser, ParserReference, generate, regex, string
+from parsy import Parser, forward_parser, regex, string
 
 # Utilities
 whitespace = regex(r"\s*")
@@ -43,9 +43,9 @@ quoted = lexeme(string('"') >> (string_part | string_esc).many().concat() << str
 JSON = Union[Dict[str, "JSON"], List["JSON"], str, float, bool, None]
 
 
-@generate
-def _json_parser() -> ParserReference[JSON]:
-    return (yield json_parser)
+@forward_parser
+def _json_parser() -> Iterator[Parser[JSON]]:
+    yield json_parser
 
 
 object_pair = (quoted << colon) & _json_parser

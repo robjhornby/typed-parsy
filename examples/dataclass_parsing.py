@@ -1,17 +1,17 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from parsy import dataclass_parser, parser_field, regex, string, whitespace
+from parsy import gather, regex, string, take, whitespace
 
 
 @dataclass
 class Person:
-    name: str = parser_field(regex(r"\w+") << whitespace)
-    age: int = parser_field(regex(r"\d+").map(int) << whitespace)
-    note: str = parser_field(regex(".+"))
+    name: str = take(regex(r"\w+") << whitespace)
+    age: int = take(regex(r"\d+").map(int) << whitespace)
+    note: str = take(regex(".+"))
 
 
-person_parser = dataclass_parser(Person)
+person_parser = gather(Person)
 person = person_parser.parse("Rob 2000 how time flies")
 print(person)
 assert person == Person(name="Rob", age=2000, note="how time flies")
@@ -22,28 +22,26 @@ assert person == Person(name="Rob", age=2000, note="how time flies")
 
 @dataclass
 class Id:
-    id: str = parser_field(regex(r"[^\s]+") << whitespace.optional())
-    from_year: Optional[int] = parser_field(
-        regex("[0-9]+").map(int).desc("Numeric").optional() << whitespace.optional()
-    )
+    id: str = take(regex(r"[^\s]+") << whitespace.optional())
+    from_year: Optional[int] = take(regex("[0-9]+").map(int).desc("Numeric").optional() << whitespace.optional())
 
 
 @dataclass
 class Name:
-    name: str = parser_field(regex(r"[a-zA-Z]+") << whitespace.optional())
-    abbreviated: Optional[bool] = parser_field(
+    name: str = take(regex(r"[a-zA-Z]+") << whitespace.optional())
+    abbreviated: Optional[bool] = take(
         (string("T") | string("F")).map(lambda x: x == "T").optional() << whitespace.optional()
     )
 
 
 @dataclass
 class PersonDetail:
-    id: Id = parser_field(dataclass_parser(Id))
-    forename: Name = parser_field(dataclass_parser(Name))
-    surname: Optional[Name] = parser_field(dataclass_parser(Name).optional())
+    id: Id = take(gather(Id))
+    forename: Name = take(gather(Name))
+    surname: Optional[Name] = take(gather(Name).optional())
 
 
-out_parser = dataclass_parser(PersonDetail).many()
+out_parser = gather(PersonDetail).many()
 
 new_person = out_parser.parse("007 2023 Rob T John 123 2004 Bob")
 print(new_person)
@@ -62,9 +60,9 @@ res = [
 
 @dataclass
 class PersonWithRarity:
-    name: str = parser_field(regex(r"\w+") << whitespace)
-    age: int = parser_field(regex(r"\d+").map(int) << whitespace)
-    note: str = parser_field(regex(".+"))
+    name: str = take(regex(r"\w+") << whitespace)
+    age: int = take(regex(r"\d+").map(int) << whitespace)
+    note: str = take(regex(".+"))
     rare: bool = False
 
     def __post_init__(self):
@@ -72,7 +70,7 @@ class PersonWithRarity:
             self.rare = True
 
 
-person_parser = dataclass_parser(PersonWithRarity)
+person_parser = gather(PersonWithRarity)
 person = person_parser.parse("Rob 20 whippersnapper")
 print(person)
 assert person == PersonWithRarity(name="Rob", age=20, note="whippersnapper", rare=False)

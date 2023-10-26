@@ -13,7 +13,7 @@ import enum
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
-from parsy import from_enum, regex, string
+from parsy import from_enum, regex, seq, string
 
 # -- AST nodes:
 
@@ -68,7 +68,7 @@ class Select:
 number_literal = regex(r"-?[0-9]+").map(int).map(Number)
 
 # We don't support ' in strings or escaping for simplicity
-string_literal = regex(r"'[^']*'").map(lambda s: String(s[1:-1]))
+string_literal = regex(r"'([^']*)'", group=1).map(String)
 
 identifier = regex("[a-zA-Z][a-zA-Z0-9_]*")
 
@@ -83,20 +83,18 @@ column_expr = field | string_literal | number_literal
 
 operator = from_enum(Operator)
 
+comparison = seq((column_expr << padding), operator, (padding >> column_expr)).combine(Comparison)
 
-comparison = ((column_expr << padding) & operator & (padding >> column_expr)).map(
-    lambda t: Comparison(t[0][0], t[0][1], t[1])
-)
 
-SELECT = string("SELECT")
-FROM = string("FROM")
-WHERE = string("WHERE")
+SELECT = string("SELECT") << space
+FROM = space >> string("FROM") << space
+WHERE = space >> string("WHERE") << space
 
-select = (
-    ((SELECT + space) >> (column_expr.sep_by(padding + string(",") + padding, min=1)) << (space + FROM + space))
-    & table
-    & ((space >> WHERE >> space >> comparison).optional() << (padding + string(";")))
-).map(lambda t: Select(t[0][0], t[0][1], t[1]))
+select = seq(
+    SELECT >> column_expr.sep_by(padding + string(",") + padding, min=1),
+    FROM >> table,
+    (WHERE >> comparison).optional() << (padding + string(";")),
+).combine(Select)
 
 
 # Run these tests with pytest:

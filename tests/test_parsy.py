@@ -369,7 +369,7 @@ class TestParser(unittest.TestCase):
 
     def test_add_tuple(self):
         """This test code is for checking that pylance gives no type errors"""
-        letter_tuple = letter.as_tuple()
+        letter_tuple = letter.tuple()
         int_parser = regex(r"\d").map(int)
         two_int_parser = int_parser & int_parser
         barcode = letter_tuple + two_int_parser
@@ -383,7 +383,7 @@ class TestParser(unittest.TestCase):
 
     def test_add_too_long_tuple_uniform_types(self):
         """This test code is for checking that pylance gives no type errors"""
-        letter_tuple = letter.as_tuple()
+        letter_tuple = letter.tuple()
         int_parser = regex(r"\d")
         six_int_parser = (
             (int_parser & int_parser).append(int_parser).append(int_parser).append(int_parser).append(int_parser)
@@ -399,7 +399,7 @@ class TestParser(unittest.TestCase):
 
     def test_add_too_long_tuple_different_types(self):
         """This test code is for checking that pylance gives no type errors"""
-        letter_tuple = letter.as_tuple()
+        letter_tuple = letter.tuple()
         int_parser = regex(r"\d").map(int)
         six_int_parser = (
             (int_parser & int_parser).append(int_parser).append(int_parser).append(int_parser).append(int_parser)
@@ -450,9 +450,9 @@ class TestParser(unittest.TestCase):
 
     def test_add_tuples_like_seq(self):
         """A possible alternative to `seq`"""
-        a = regex("a").as_tuple()
-        b = regex("b").as_tuple()
-        num = regex(r"[\d]").map(int).as_tuple()
+        a = regex("a").tuple()
+        b = regex("b").tuple()
+        num = regex(r"[\d]").map(int).tuple()
 
         parser = a + num + b + num + (a | num)
 

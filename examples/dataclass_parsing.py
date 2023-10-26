@@ -30,7 +30,7 @@ class Id:
 class Name:
     name: str = take(regex(r"[a-zA-Z]+") << whitespace.optional())
     abbreviated: Optional[bool] = take(
-        (string("T") | string("F")).map(lambda x: x == "T").optional() << whitespace.optional()
+        (string("T").result(True) | string("F").result(False)).optional() << whitespace.optional()
     )
 
 

@@ -35,7 +35,7 @@ string_esc = string("\\") >> (
     | string("n").result("\n")
     | string("r").result("\r")
     | string("t").result("\t")
-    | regex(r"u[0-9a-fA-F]{4}").map(lambda s: chr(int(s[1:], 16)))
+    | regex(r"u([0-9a-fA-F]{4})", group=1).map(lambda s: chr(int(s, 16)))
 )
 quoted = lexeme(string('"') >> (string_part | string_esc).many().concat() << string('"'))
 

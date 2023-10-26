@@ -53,18 +53,18 @@ def test_stateful_parser():
 
 def test_stateful_parser_without_mutation():
     @Parser
-    def alternative(state: ParseState) -> Result[Person]:
+    def alternative(s: ParseState) -> Result[Person]:
 
-        name, state = state.apply(regex(r"\w+") << whitespace)
-        age, state = state.apply((regex(r"\d+") << whitespace).map(int))
+        name, s = s.apply(regex(r"\w+") << whitespace)
+        age, s = s.apply((regex(r"\d+") << whitespace).map(int))
 
         if age % 2:
             # Parsing depends on previously parsed values
-            note, state = state.apply(regex(".+") >> success("Odd age"))
+            note, s = s.apply(regex(".+") >> success("Odd age"))
         else:
-            note, state = state.apply(regex(".+"))
+            note, s = s.apply(regex(".+"))
 
-        return Result.success(state.index, Person(name, age, note))
+        return Result.success(s.index, Person(name, age, note))
 
     result = alternative.parse("Rob 29 note")
     assert result == Person("Rob", 29, "Odd age")

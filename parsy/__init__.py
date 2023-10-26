@@ -131,13 +131,6 @@ class Result(Generic[OUT_co]):
     def success(index: int, value: OUT) -> Result[OUT]:
         return Result(True, index, value, -1, frozenset())
 
-    # We don't handle types of failures yet, and always
-    # either:
-    # - don't return these values (e.g. choose another parser)
-    # - raise an exception.
-
-    # Therefore, I think it is safe here to use `Any` as type to keep type checker happy
-    # The same issue crops up in various branches that return parse failure results
     @staticmethod
     def failure(index: int, expected: str) -> Result[Any]:
         return Result(False, -1, None, index, frozenset([expected]))
@@ -327,7 +320,7 @@ class Parser(Generic[OUT_co]):
         if max == 0:
             return zero_times
 
-        res = self.as_list() + (sep >> self).times(min - 1, max - 1)
+        res = self.list() + (sep >> self).times(min - 1, max - 1)
         if min == 0:
             res = res | zero_times
         return res
@@ -364,31 +357,39 @@ class Parser(Generic[OUT_co]):
     # only allows one "Unpack" in a Tuple (if we could have two, the return
     # type could use two Unpacks
     @overload
-    def __add__(self: Parser[Tuple[Unpack[OUT_T]]], other: Parser[Tuple[OUT1]]) -> Parser[Tuple[Unpack[OUT_T], OUT1]]:
+    def __add__(
+        self: Parser[Tuple[T, Unpack[OUT_T]]], other: Parser[Tuple[OUT1]]
+    ) -> Parser[Tuple[T, Unpack[OUT_T], OUT1]]:
         ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[Unpack[OUT_T]]], other: Parser[Tuple[OUT1, OUT2]]
-    ) -> Parser[Tuple[Unpack[OUT_T], OUT1, OUT2]]:
+        self: Parser[Tuple[OUT]], other: Parser[Tuple[T, Unpack[OUT_T]]]
+    ) -> Parser[Tuple[OUT, T, Unpack[OUT_T]]]:
         ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[Unpack[OUT_T]]], other: Parser[Tuple[OUT1, OUT2, OUT3]]
-    ) -> Parser[Tuple[Unpack[OUT_T], OUT1, OUT2, OUT3]]:
+        self: Parser[Tuple[T, Unpack[OUT_T]]], other: Parser[Tuple[OUT1, OUT2]]
+    ) -> Parser[Tuple[T, Unpack[OUT_T], OUT1, OUT2]]:
         ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[Unpack[OUT_T]]], other: Parser[Tuple[OUT1, OUT2, OUT3, OUT4]]
-    ) -> Parser[Tuple[Unpack[OUT_T], OUT1, OUT2, OUT3, OUT4]]:
+        self: Parser[Tuple[T, Unpack[OUT_T]]], other: Parser[Tuple[OUT1, OUT2, OUT3]]
+    ) -> Parser[Tuple[T, Unpack[OUT_T], OUT1, OUT2, OUT3]]:
         ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[Unpack[OUT_T]]], other: Parser[Tuple[OUT1, OUT2, OUT3, OUT4, OUT5]]
-    ) -> Parser[Tuple[Unpack[OUT_T], OUT1, OUT2, OUT3, OUT4, OUT5]]:
+        self: Parser[Tuple[T, Unpack[OUT_T]]], other: Parser[Tuple[OUT1, OUT2, OUT3, OUT4]]
+    ) -> Parser[Tuple[T, Unpack[OUT_T], OUT1, OUT2, OUT3, OUT4]]:
+        ...
+
+    @overload
+    def __add__(
+        self: Parser[Tuple[T, Unpack[OUT_T]]], other: Parser[Tuple[OUT1, OUT2, OUT3, OUT4, OUT5]]
+    ) -> Parser[Tuple[T, Unpack[OUT_T], OUT1, OUT2, OUT3, OUT4, OUT5]]:
         ...
 
     # This covers tuples where `other` has more elements than the above overloads
@@ -447,10 +448,12 @@ class Parser(Generic[OUT_co]):
         """TODO alternative name for `&`, decide on naming"""
         return self & other
 
-    def as_tuple(self: Parser[OUT]) -> Parser[Tuple[OUT]]:
+    def tuple(self: Parser[OUT]) -> Parser[Tuple[OUT]]:
+        """Wrap the result in a tuple."""
         return self.map(lambda value: (value,))
 
-    def as_list(self: Parser[OUT]) -> Parser[List[OUT]]:
+    def list(self: Parser[OUT]) -> Parser[List[OUT]]:
+        """Wrap the result in a list."""
         return self.map(lambda value: [value])
 
     def append(self: Parser[Tuple[Unpack[OUT_T]]], other: Parser[OUT2]) -> Parser[Tuple[Unpack[OUT_T], OUT2]]:
@@ -690,7 +693,7 @@ def seq(*parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]:
     if not parsers:
         raise ValueError()
     first, *remainder = parsers
-    parser = first.as_tuple()
+    parser = first.tuple()
     for p in remainder:
         parser = parser.append(p)  # type: ignore
     return parser

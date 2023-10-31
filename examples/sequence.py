@@ -17,8 +17,8 @@ person_arg_sequence = seq(
 )
 person_parser = person_arg_sequence.combine(Person)
 
-person = person_parser.parse("Rob 1000 pretty old")
+person = person_parser.parse("Frodo 1000 pretty old")
 
 print(person)
 
-assert person == Person(name="Rob", age=1000, note="pretty old")
+assert person == Person(name="Frodo", age=1000, note="pretty old")

@@ -12,8 +12,8 @@ def test_permutation_parser():
 
     person_parser = dataclass_permutation_parser(Person)
 
-    person = person_parser.parse("Rob 2000 123-456")
-    person_b = person_parser.parse("123-456 2000 Rob")
+    person = person_parser.parse("Frodo 2000 123-456")
+    person_b = person_parser.parse("123-456 2000 Frodo")
     print(person)
     print(person_b)
     assert person == person_b

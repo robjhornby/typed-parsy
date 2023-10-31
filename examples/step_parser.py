@@ -47,8 +47,8 @@ def test_stateful_parser():
 
         return state.success(Person(name, age, note))
 
-    result = person_parser.parse("Rob 29 note")
-    assert result == Person("Rob", 29, "Odd age")
+    result = person_parser.parse("Frodo 29 note")
+    assert result == Person("Frodo", 29, "Odd age")
 
 
 def test_stateful_parser_without_mutation():
@@ -66,5 +66,5 @@ def test_stateful_parser_without_mutation():
 
         return Result.success(s.index, Person(name, age, note))
 
-    result = alternative.parse("Rob 29 note")
-    assert result == Person("Rob", 29, "Odd age")
+    result = alternative.parse("Frodo 29 note")
+    assert result == Person("Frodo", 29, "Odd age")

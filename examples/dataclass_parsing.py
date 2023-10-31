@@ -12,9 +12,9 @@ class Person:
 
 
 person_parser = gather(Person)
-person = person_parser.parse("Rob 2000 how time flies")
+person = person_parser.parse("Frodo 2000 how time flies")
 print(person)
-assert person == Person(name="Rob", age=2000, note="how time flies")
+assert person == Person(name="Frodo", age=2000, note="how time flies")
 
 
 # Nesting dataclass parsers
@@ -43,13 +43,13 @@ class PersonDetail:
 
 out_parser = gather(PersonDetail).many()
 
-new_person = out_parser.parse("007 2023 Rob T John 123 2004 Bob")
+new_person = out_parser.parse("007 2023 Frodo T John 123 2004 Bob")
 print(new_person)
 
 res = [
     PersonDetail(
         id=Id(id="007", from_year=2023),
-        forename=Name(name="Rob", abbreviated=True),
+        forename=Name(name="Frodo", abbreviated=True),
         surname=Name(name="John", abbreviated=None),
     ),
     PersonDetail(id=Id(id="123", from_year=2004), forename=Name(name="Bob", abbreviated=None), surname=None),
@@ -71,10 +71,10 @@ class PersonWithRarity:
 
 
 person_parser = gather(PersonWithRarity)
-person = person_parser.parse("Rob 20 whippersnapper")
+person = person_parser.parse("Frodo 20 whippersnapper")
 print(person)
-assert person == PersonWithRarity(name="Rob", age=20, note="whippersnapper", rare=False)
+assert person == PersonWithRarity(name="Frodo", age=20, note="whippersnapper", rare=False)
 
-person = person_parser.parse("Rob 2000 how time flies")
+person = person_parser.parse("Frodo 2000 how time flies")
 print(person)
-assert person == PersonWithRarity(name="Rob", age=2000, note="how time flies", rare=True)
+assert person == PersonWithRarity(name="Frodo", age=2000, note="how time flies", rare=True)

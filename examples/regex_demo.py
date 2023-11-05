@@ -18,17 +18,18 @@ assert named_group.parse("abc") == "c"
 tuple_int_groups = regex(r"a(b)(c)", group=(1, 2))
 assert tuple_int_groups.parse("abc") == ("b", "c")
 
-# Use a 1-tuple group. Python's `re` module treats a 1-tuple group the same as a single integer: so do we
+# Use a 1-tuple group. Python's `re` module treats a 1-tuple group the same as a single integer group
+# meaning the result is just the string which matched, not wrapped in a tuple. Parsy's `regex` does the same.
 tuple_int_groups = regex(r"a(b)", group=(1,))
 assert tuple_int_groups.parse("ab") == "b"
 
-# Use multiple groups specified by a tuple of named capture groups
 
+# Use multiple groups specified by a tuple of named capture groups
 tuple_int_groups = regex(r"a(?P<first>b)(?P<second>c)", group=("first", "second"))
 assert tuple_int_groups.parse("abc") == ("b", "c")
 
 
-# Usual case but still words - group specified by both ints and named groups
+# Groups specified by both ints and named groups
 mixed_groups = regex(r"a(?P<first>b)(?P<second>c)", group=("first", 2))
 assert mixed_groups.parse("abc") == ("b", "c")
 
@@ -38,6 +39,7 @@ mapped_parser = parser.combine(lambda id, first, second: {id: int(first) + int(s
 
 assert mapped_parser.parse("123: 3 + 4") == {"123": 7}
 
+# The same example again, using a dataclass to structure the parsing result
 digits = regex(r"[\d]+")
 
 
@@ -49,4 +51,5 @@ class Sum:
 
 
 d_parser = gather(Sum)
-print(d_parser.parse("123: 3 + 4"))
+d_mapped_parser = d_parser.map(lambda res: {res.id: res.first + res.second})
+assert d_mapped_parser.parse("123: 3 + 4") == {"123": 7}

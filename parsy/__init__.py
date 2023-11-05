@@ -53,14 +53,6 @@ _T_contra = TypeVar("_T_contra", contravariant=True)
 
 _T_co = TypeVar("_T_co", covariant=True)
 
-TUPLE_T = TypeVar("TUPLE_T")
-TUP1 = Tuple[TUPLE_T]
-TUP2 = Tuple[TUPLE_T, TUPLE_T]
-TUP3 = Tuple[TUPLE_T, TUPLE_T, TUPLE_T]
-TUP4 = Tuple[TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T]
-TUP5 = Tuple[TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T]
-TUP6 = Tuple[TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T, TUPLE_T]
-
 
 class SupportsAdd(Protocol[_T_contra, _T_co]):
     def __add__(self, __x: _T_contra) -> _T_co:
@@ -548,12 +540,16 @@ def regex(
 
 
 @overload
-def regex(pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: TUP2[str | int]) -> Parser[TUP2[str]]:
+def regex(
+    pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: Tuple[str | int, str | int]
+) -> Parser[Tuple[str, str]]:
     ...
 
 
 @overload
-def regex(pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: TUP3[str | int]) -> Parser[TUP3[str]]:
+def regex(
+    pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: Tuple[str | int, str | int, str | int]
+) -> Parser[Tuple[str, str, str]]:
     ...
 
 
@@ -562,8 +558,8 @@ def regex(
     pattern: PatternType,
     *,
     flags: re.RegexFlag = re.RegexFlag(0),
-    group: TUP4[str | int],
-) -> Parser[TUP4[str]]:
+    group: Tuple[str | int, str | int, str | int, str | int],
+) -> Parser[Tuple[str, str, str, str]]:
     ...
 
 
@@ -572,18 +568,20 @@ def regex(
     pattern: PatternType,
     *,
     flags: re.RegexFlag = re.RegexFlag(0),
-    group: TUP5[str | int],
-) -> Parser[TUP5[str]]:
+    group: Tuple[str | int, str | int, str | int, str | int, str | int],
+) -> Parser[Tuple[str, str, str, str, str]]:
     ...
 
 
 def at_least_len_2(
-    value: TUP1[T] | TUP2[T] | TUP3[T] | TUP4[T] | TUP5[T] | Tuple[T, ...]
-) -> TypeGuard[TUP2[T] | TUP3[T] | TUP4[T] | TUP5[T] | Tuple[T, ...]]:
+    value: Tuple[T] | Tuple[T, T] | Tuple[T, T, T] | Tuple[T, T, T, T] | Tuple[T, T, T, T, T] | Tuple[T, ...]
+) -> TypeGuard[Tuple[T, T] | Tuple[T, T, T] | Tuple[T, T, T, T] | Tuple[T, T, T, T, T] | Tuple[T, ...]]:
     return len(value) >= 2
 
 
-def has_len_1(value: TUP1[T] | TUP2[T] | TUP3[T] | TUP4[T] | TUP5[T] | Tuple[T, ...]) -> TypeGuard[TUP1[T]]:
+def has_len_1(
+    value: Tuple[T] | Tuple[T, T] | Tuple[T, T, T] | Tuple[T, T, T, T] | Tuple[T, T, T, T, T] | Tuple[T, ...]
+) -> TypeGuard[Tuple[T]]:
     return len(value) == 1
 
 
@@ -593,11 +591,11 @@ def regex(
     flags: re.RegexFlag = re.RegexFlag(0),
     group: str
     | int
-    | TUP1[str | int]
-    | TUP2[str | int]
-    | TUP3[str | int]
-    | TUP4[str | int]
-    | TUP5[str | int]
+    | Tuple[str | int]
+    | Tuple[str | int, str | int]
+    | Tuple[str | int, str | int, str | int]
+    | Tuple[str | int, str | int, str | int, str | int]
+    | Tuple[str | int, str | int, str | int, str | int, str | int]
     | Tuple[str | int, ...] = 0,
 ) -> Parser[str | Tuple[str, ...]]:
     if isinstance(pattern, str):
@@ -697,14 +695,6 @@ def seq(*parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]:
     for p in remainder:
         parser = parser.append(p)  # type: ignore
     return parser
-
-
-# TODO the rest of the functions here need type annotations.
-
-# One problem is that `test_item` and `match_item` are assumning that the input
-# type might not be str, but arbitrary types, including heterogeneous
-# lists. We have no generic parameter for the input state.stream type
-# yet, for simplicity.
 
 
 def test_char(func: Callable[[str], bool], description: str) -> Parser[str]:

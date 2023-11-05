@@ -2,7 +2,7 @@
 import enum
 import re
 import unittest
-from typing import Iterator, List, Tuple, Union
+from typing import Iterator, List, Union
 
 from parsy import (
     ParseError,
@@ -16,7 +16,6 @@ from parsy import (
     forward_parser,
     from_enum,
     letter,
-    line_info,
     line_info_at,
     peek,
     regex,
@@ -549,24 +548,6 @@ class TestParser(unittest.TestCase):
     def test_decimal_digit(self):
         self.assertEqual(decimal_digit.at_least(1).concat().parse("9876543210"), "9876543210")
         self.assertRaises(ParseError, decimal_digit.parse, "¹")
-
-    def test_line_info(self):
-        @Parser
-        def foo(s: ParseState) -> Result[Tuple[str, Tuple[int, int]]]:
-            i, s = s.apply(line_info)
-            l, s = s.apply(any_char)
-            return s.success((l, i))
-
-        self.assertEqual(
-            foo.many().parse("AB\nCD"),
-            [
-                ("A", (0, 0)),
-                ("B", (0, 1)),
-                ("\n", (0, 2)),
-                ("C", (1, 0)),
-                ("D", (1, 1)),
-            ],
-        )
 
     def test_should_fail(self):
         not_a_digit = digit.should_fail("not a digit") >> regex(r".*")

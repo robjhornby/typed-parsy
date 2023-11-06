@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from parsy import dataclass_permutation_parser, eof, regex, take, whitespace
+from parsy import eof, gather_perm, regex, take, whitespace
 
 
 def test_permutation_parser():
@@ -10,7 +10,7 @@ def test_permutation_parser():
         age: int = take(regex(r"\d+").map(int).desc("An integer age") << (whitespace | eof))
         id: str = take(regex(r"\d{3}-\d{3}") << (whitespace | eof))
 
-    person_parser = dataclass_permutation_parser(Person)
+    person_parser = gather_perm(Person)
 
     person = person_parser.parse("Frodo 2000 123-456")
     person_b = person_parser.parse("123-456 2000 Frodo")

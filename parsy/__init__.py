@@ -82,6 +82,31 @@ class ParseState:
         return Result.success(self.index, value)
 
 
+@dataclass
+class State:
+    state: ParseState
+
+    def apply(self, parser: Parser[OUT]) -> OUT:
+        result, self.state = parser.parse_state(self.state)
+        return result
+
+    def success(self, value: OUT) -> Result[OUT]:
+        return Result.success(self.state.index, value)
+
+    @property
+    def remaining(self) -> str:
+        return self.state.stream[self.state.index :]
+
+
+def stateful_parser(fn: Callable[[State], Result[OUT]]) -> Parser[OUT]:
+    @Parser
+    def the_parser(parse_state: ParseState) -> Result[OUT]:
+        state = State(parse_state)
+        return fn(state)
+
+    return the_parser
+
+
 def line_info_at(state: ParseState) -> Tuple[int, int]:
     if state.index > len(state.stream):
         raise ValueError("invalid state.index")
@@ -808,7 +833,7 @@ def gather(datatype: Type[OUT_D]) -> Parser[OUT_D]:
     return parser
 
 
-def dataclass_permutation_parser(datatype: Type[OUT_D]) -> Parser[OUT_D]:
+def gather_perm(datatype: Type[OUT_D]) -> Parser[OUT_D]:
     """Parse all fields of a dataclass parser in any order."""
 
     @Parser

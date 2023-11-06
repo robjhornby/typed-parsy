@@ -1,19 +1,8 @@
 from dataclasses import dataclass
-from typing import Callable
 
-from parsy import OUT, Parser, ParseState, Result, regex, success, whitespace
+import pytest
 
-
-@dataclass
-class State:
-    state: ParseState
-
-    def apply(self, parser: Parser[OUT]) -> OUT:
-        result, self.state = parser.parse_state(self.state)
-        return result
-
-    def success(self, value: OUT) -> Result[OUT]:
-        return Result.success(self.state.index, value)
+from parsy import ParseError, Result, State, regex, stateful_parser, success, whitespace
 
 
 @dataclass
@@ -21,15 +10,6 @@ class Person:
     name: str
     age: int
     note: str
-
-
-def stateful_parser(fn: Callable[[State], Result[OUT]]) -> Parser[OUT]:
-    @Parser
-    def the_parser(parse_state: ParseState) -> Result[OUT]:
-        state = State(parse_state)
-        return fn(state)
-
-    return the_parser
 
 
 def test_stateful_parser():
@@ -51,20 +31,19 @@ def test_stateful_parser():
     assert result == Person("Frodo", 29, "Odd age")
 
 
-def test_stateful_parser_without_mutation():
-    @Parser
-    def alternative(s: ParseState) -> Result[Person]:
+def test_stateful_parser_failure():
+    @stateful_parser
+    def person(s: State) -> Result[Person]:
 
-        name, s = s.apply(regex(r"\w+") << whitespace)
-        age, s = s.apply((regex(r"\d+") << whitespace).map(int))
+        name = s.apply(regex(r"\w+") << whitespace)
+        age = s.apply((regex(r"\d+") << whitespace).map(int).desc("digit"))
 
-        if age % 2:
-            # Parsing depends on previously parsed values
-            note, s = s.apply(regex(".+") >> success("Odd age"))
-        else:
-            note, s = s.apply(regex(".+"))
+        return s.success(Person(name, age, "default"))
 
-        return Result.success(s.index, Person(name, age, note))
+    with pytest.raises(ParseError) as exception:
+        person.parse("Frodo what")
 
-    result = alternative.parse("Frodo 29 note")
-    assert result == Person("Frodo", 29, "Odd age")
+    # Parsing fails part way through
+    assert exception.value.state.index == 6
+    # Parsing fails on the digit regex parser
+    assert exception.value.expected == {"digit"}

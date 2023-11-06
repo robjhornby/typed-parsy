@@ -13,9 +13,7 @@ import enum
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
-from parsy import from_enum, regex, seq, string
-
-# -- AST nodes:
+from parsy import from_enum, gather, regex, string, take
 
 
 class Operator(enum.Enum):
@@ -26,75 +24,60 @@ class Operator(enum.Enum):
     GTE = ">="
 
 
-@dataclass
-class Number:
-    value: int
-
-
-@dataclass
-class String:
-    value: str
-
-
-@dataclass
-class Field:
-    name: str
-
-
-@dataclass
-class Table:
-    name: str
-
-
-ColumnExpression = Union[Field, String, Number]
-
-
-@dataclass
-class Comparison:
-    left: ColumnExpression
-    operator: Operator
-    right: ColumnExpression
-
-
-@dataclass
-class Select:
-    columns: List[ColumnExpression]
-    table: Table
-    where: Optional[Comparison]
-
-
-# -- Parsers:
-
-number_literal = regex(r"-?[0-9]+").map(int).map(Number)
-
-# We don't support ' in strings or escaping for simplicity
-string_literal = regex(r"'([^']*)'", group=1).map(String)
-
 identifier = regex("[a-zA-Z][a-zA-Z0-9_]*")
 
-field = identifier.map(Field)
-
-table = identifier.map(Table)
 
 space = regex(r"\s+")  # non-optional whitespace
 padding = regex(r"\s*")  # optional whitespace
 
-column_expr = field | string_literal | number_literal
-
 operator = from_enum(Operator)
 
-comparison = seq((column_expr << padding), operator, (padding >> column_expr)).combine(Comparison)
+
+@dataclass
+class Number:
+    value: int = take(regex(r"-?[0-9]+").map(int))
+
+
+@dataclass
+class String:
+    value: str = take(regex(r"'([^']*)'", group=1))
+
+
+@dataclass
+class Field:
+    name: str = take(identifier)
+
+
+@dataclass
+class Table:
+    name: str = take(identifier)
+
+
+ColumnExpression = Union[Field, String, Number]
+
+column_expr = gather(Field) | gather(String) | gather(Number)
+
+
+@dataclass
+class Comparison:
+    left: ColumnExpression = take(column_expr << padding)
+    operator: Operator = take(operator)
+    right: ColumnExpression = take(padding >> column_expr)
 
 
 SELECT = string("SELECT") << space
 FROM = space >> string("FROM") << space
 WHERE = space >> string("WHERE") << space
 
-select = seq(
-    SELECT >> column_expr.sep_by(padding + string(",") + padding, min=1),
-    FROM >> table,
-    (WHERE >> comparison).optional() << (padding + string(";")),
-).combine(Select)
+
+@dataclass
+class Select:
+    columns: List[ColumnExpression] = take(SELECT >> column_expr.sep_by(padding + string(",") + padding, min=1))
+    table: Table = take(FROM >> gather(Table))
+    where: Optional[Comparison] = take((WHERE >> gather(Comparison)).optional() << (padding + string(";")))
+
+
+select = gather(Select)
 
 
 # Run these tests with pytest:

@@ -17,10 +17,8 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 
-import os
-import sys
 
-sys.path.insert(0, os.path.abspath("../src"))
+# sys.path.insert(0, os.path.abspath("../src"))
 
 
 # -- General configuration ------------------------------------------------
@@ -84,13 +82,52 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "default"
+html_theme = "furo"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+
+# html_theme_options = {
+#     "dark_css_variables": {
+#         "color-problematic": "#ee5151",
+
+#         # Base Colors
+#         "color-foreground-primary": "#ffffffcc",  # for main text and headings
+#         "color-foreground-secondary": "#9ca0a5",  # for secondary text
+#         "color-foreground-muted": "#81868d",  # for muted text
+#         "color-foreground-border": "#666666",  # for content borders
+
+#         "color-background-primary": "#171a1c",  # for content
+#         "color-background-secondary": "#23251f",  # for navigation + ToC
+#         "color-background-hover": "#323B37ff",  # for navigation-item hover
+#         "color-background-hover--transparent": "#323B3700",
+#         "color-background-border": "#303335",  # for UI borders
+#         "color-background-item": "#444",  # for "background" items (eg: copybutton)
+
+#         # Announcements
+#         "color-announcement-background": "#000000dd",
+#         "color-announcement-text": "#eeebee",
+
+#         # Brand colors
+#         "color-brand-primary": "#2b8cee",
+#         "color-brand-content": "#368ce2",
+
+#         # Highlighted text (search)
+#         "color-highlighted-background": "#083563",
+
+#         # GUI Labels
+#         "color-guilabel-background": "#08356380",
+#         "color-guilabel-border": "#13395f80",
+
+#         # API documentation
+#         "color-highlight-on-target": "#333300",
+
+#         # Admonitions
+#         "color-admonition-background": "#18181a",
+#     },
+# }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

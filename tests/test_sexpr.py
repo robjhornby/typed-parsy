@@ -43,23 +43,23 @@ program = ignore >> expr.many()
 
 
 class TestSexpr(unittest.TestCase):
-    def test_form(self):
+    def test_form(self) -> None:
         result = program.parse("(1 2 3)")
         self.assertEqual(result, [[1, 2, 3]])
 
-    def test_quote(self):
+    def test_quote(self) -> None:
         result = program.parse("'foo '(bar baz)")
         self.assertEqual(result, [["quote", "foo"], ["quote", ["bar", "baz"]]])
 
-    def test_double_quote(self):
+    def test_double_quote(self) -> None:
         result = program.parse("''foo")
         self.assertEqual(result, [["quote", ["quote", "foo"]]])
 
-    def test_boolean(self):
+    def test_boolean(self) -> None:
         result = program.parse("#t #f")
         self.assertEqual(result, [True, False])
 
-    def test_comments(self):
+    def test_comments(self) -> None:
         result = program.parse(
             """
             ; a program with a comment

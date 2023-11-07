@@ -117,7 +117,7 @@ def line_info_at(state: ParseState) -> Tuple[int, int]:
 
 
 class ParseError(RuntimeError):
-    def __init__(self, expected: FrozenSet[str], state: ParseState):
+    def __init__(self, expected: FrozenSet[str], state: ParseState) -> None:
         self.expected: FrozenSet[str] = expected
         self.state: ParseState = state
 
@@ -167,7 +167,7 @@ class Result(Generic[OUT_co]):
 
 
 class ResultAsException(RuntimeError, Generic[OUT_co]):
-    def __init__(self, result: Result[OUT_co]):
+    def __init__(self, result: Result[OUT_co]) -> None:
         self.result: Result[OUT_co] = result
 
 
@@ -182,14 +182,14 @@ class Parser(Generic[OUT_co]):
     of the failure.
     """
 
-    def __init__(self, wrapped_fn: Callable[[ParseState], Result[OUT_co]]):
+    def __init__(self, wrapped_fn: Callable[[ParseState], Result[OUT_co]]) -> None:
         self.wrapped_fn: Callable[[ParseState], Result[OUT_co]] = wrapped_fn
 
     def __call__(self, state: ParseState) -> Result[OUT_co]:
         try:
             return self.wrapped_fn(state)
         except ResultAsException as exception:  # type: ignore
-            return exception.result  # type: ignore
+            return exception.result  #  type: ignore
 
     def parse(self, stream: str) -> OUT_co:
         """Parse a string and return the result or raise a ParseError."""
@@ -547,6 +547,18 @@ def string(s: str, transform: Callable[[str], str] = noop) -> Parser[str]:
 PatternType = Union[str, Pattern[str]]
 
 
+def at_least_len_2(
+    value: Tuple[T] | Tuple[T, T] | Tuple[T, T, T] | Tuple[T, T, T, T] | Tuple[T, T, T, T, T] | Tuple[T, ...]
+) -> TypeGuard[Tuple[T, T] | Tuple[T, T, T] | Tuple[T, T, T, T] | Tuple[T, T, T, T, T] | Tuple[T, ...]]:
+    return len(value) >= 2
+
+
+def has_len_1(
+    value: Tuple[T] | Tuple[T, T] | Tuple[T, T, T] | Tuple[T, T, T, T] | Tuple[T, T, T, T, T] | Tuple[T, ...]
+) -> TypeGuard[Tuple[T]]:
+    return len(value) == 1
+
+
 @overload
 def regex(pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: Literal[0] = 0) -> Parser[str]:
     ...
@@ -558,9 +570,7 @@ def regex(pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group:
 
 
 @overload
-def regex(
-    pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: Tuple[str | int]
-) -> Parser[Tuple[str]]:
+def regex(pattern: PatternType, *, flags: re.RegexFlag = re.RegexFlag(0), group: Tuple[str | int]) -> Parser[str]:
     ...
 
 
@@ -596,18 +606,6 @@ def regex(
     group: Tuple[str | int, str | int, str | int, str | int, str | int],
 ) -> Parser[Tuple[str, str, str, str, str]]:
     ...
-
-
-def at_least_len_2(
-    value: Tuple[T] | Tuple[T, T] | Tuple[T, T, T] | Tuple[T, T, T, T] | Tuple[T, T, T, T, T] | Tuple[T, ...]
-) -> TypeGuard[Tuple[T, T] | Tuple[T, T, T] | Tuple[T, T, T, T] | Tuple[T, T, T, T, T] | Tuple[T, ...]]:
-    return len(value) >= 2
-
-
-def has_len_1(
-    value: Tuple[T] | Tuple[T, T] | Tuple[T, T, T] | Tuple[T, T, T, T] | Tuple[T, T, T, T, T] | Tuple[T, ...]
-) -> TypeGuard[Tuple[T]]:
-    return len(value) == 1
 
 
 def regex(
@@ -824,7 +822,7 @@ def gather(datatype: Type[OUT_D]) -> Parser[OUT_D]:
             parser: Parser[Any] = dataclass_field.metadata["parser"]
             result = parser(state)
             if not result.status:
-                return result  # type: ignore
+                return result
             state = state.at(result.index)
             parsed_fields[dataclass_field.name] = result.value
 

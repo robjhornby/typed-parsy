@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from parsy import eof, gather_perm, regex, take, whitespace
 
 
-def test_permutation_parser():
+def test_permutation_parser() -> None:
     @dataclass
     class Person:
         name: str = take(regex(r"[a-zA-Z]+") << (whitespace | eof).desc("name"))

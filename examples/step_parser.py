@@ -12,7 +12,7 @@ class Person:
     note: str
 
 
-def test_stateful_parser():
+def test_stateful_parser() -> None:
     @stateful_parser
     def person_parser(state: State) -> Result[Person]:
 
@@ -31,7 +31,7 @@ def test_stateful_parser():
     assert result == Person("Frodo", 29, "Odd age")
 
 
-def test_stateful_parser_failure():
+def test_stateful_parser_failure() -> None:
     @stateful_parser
     def person(s: State) -> Result[Person]:
 

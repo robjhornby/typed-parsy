@@ -59,7 +59,7 @@ json_parser = quoted | number | json_object | array | true | false | null
 json_doc = whitespace >> json_parser
 
 
-def test():
+def test_json_parser() -> None:
     result = json_doc.parse(
         r"""
     {
@@ -70,9 +70,9 @@ def test():
         "nested": {"x": "y"},
         "other": [true, false, null]
     }
-"""
+    """
     )
-    print(result)
+
     assert result == {
         "int": 1,
         "string": "hello",
@@ -81,8 +81,3 @@ def test():
         "nested": {"x": "y"},
         "other": [True, False, None],
     }
-
-
-if __name__ == "__main__":
-    test()
-    # print(repr(json_doc.parse(stdin.read())))

@@ -80,10 +80,7 @@ class Select:
 select = gather(Select)
 
 
-# Run these tests with pytest:
-
-
-def test_select():
+def test_select() -> None:
     assert select.parse("SELECT thing, stuff, 123, 'hello' FROM my_table WHERE id = 1;") == Select(
         columns=[Field("thing"), Field("stuff"), Number(123), String("hello")],
         table=Table("my_table"),
@@ -91,7 +88,7 @@ def test_select():
     )
 
 
-def test_optional_where():
+def test_optional_where() -> None:
     assert select.parse("SELECT 1 FROM x;") == Select(
         columns=[Number(1)],
         table=Table("x"),

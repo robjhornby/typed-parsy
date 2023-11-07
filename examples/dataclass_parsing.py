@@ -11,10 +11,10 @@ class Person:
     note: str = take(regex(".+"))
 
 
-person_parser = gather(Person)
-person = person_parser.parse("Frodo 2000 how time flies")
-print(person)
-assert person == Person(name="Frodo", age=2000, note="how time flies")
+def test_dataclass_parser() -> None:
+    person_parser = gather(Person)
+    person = person_parser.parse("Frodo 2000 how time flies")
+    assert person == Person(name="Frodo", age=2000, note="how time flies")
 
 
 # Nesting dataclass parsers
@@ -41,19 +41,21 @@ class PersonDetail:
     surname: Optional[Name] = take(gather(Name).optional())
 
 
-out_parser = gather(PersonDetail).many()
+def test_dataclass_parser_with_optional_field() -> None:
+    out_parser = gather(PersonDetail).many()
 
-new_person = out_parser.parse("007 2023 Frodo T John 123 2004 Bob")
-print(new_person)
+    new_person = out_parser.parse("007 2023 Frodo T John 123 2004 Bob")
 
-res = [
-    PersonDetail(
-        id=Id(id="007", from_year=2023),
-        forename=Name(name="Frodo", abbreviated=True),
-        surname=Name(name="John", abbreviated=None),
-    ),
-    PersonDetail(id=Id(id="123", from_year=2004), forename=Name(name="Bob", abbreviated=None), surname=None),
-]
+    res = [
+        PersonDetail(
+            id=Id(id="007", from_year=2023),
+            forename=Name(name="Frodo", abbreviated=True),
+            surname=Name(name="John", abbreviated=None),
+        ),
+        PersonDetail(id=Id(id="123", from_year=2004), forename=Name(name="Bob", abbreviated=None), surname=None),
+    ]
+    assert new_person == res
+
 
 # Dataclass parsing where not all fields have a parsy parser
 
@@ -65,16 +67,15 @@ class PersonWithRarity:
     note: str = take(regex(".+"))
     rare: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.age > 70:
             self.rare = True
 
 
-person_parser = gather(PersonWithRarity)
-person = person_parser.parse("Frodo 20 whippersnapper")
-print(person)
-assert person == PersonWithRarity(name="Frodo", age=20, note="whippersnapper", rare=False)
+def test_dataclass_with_default_value() -> None:
+    parser = gather(PersonWithRarity)
+    person = parser.parse("Frodo 20 whippersnapper")
+    assert person == PersonWithRarity(name="Frodo", age=20, note="whippersnapper", rare=False)
 
-person = person_parser.parse("Frodo 2000 how time flies")
-print(person)
-assert person == PersonWithRarity(name="Frodo", age=2000, note="how time flies", rare=True)
+    person = parser.parse("Frodo 2000 how time flies")
+    assert person == PersonWithRarity(name="Frodo", age=2000, note="how time flies", rare=True)

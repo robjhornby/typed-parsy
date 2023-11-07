@@ -1,6 +1,6 @@
 from typing import Iterator, Union
 
-from parsy import Parser, ParseState, forward_parser, match_char, regex, success
+from parsy import Parser, ParseState, Result, forward_parser, match_char, regex, success
 
 """
 nonZeroDigit = "1"|"2"|"3"|"4"|"5"|"6"|"7"|"8"|"9";
@@ -24,7 +24,7 @@ plus = match_char("+").result(1)
 minus = match_char("-").result(-1)
 
 
-def simple_eval(tokens: str):
+def simple_eval(tokens: str) -> Union[int, float]:
     # This function parses and evaluates at the same time.
 
     # _simple = forward_parser(lambda: (yield simple))
@@ -37,7 +37,7 @@ def simple_eval(tokens: str):
         yield multiplicative
 
     @Parser
-    def additive(s: ParseState):
+    def additive(s: ParseState) -> Result[Union[int, float]]:
         res, s = s.apply(_multiplicative)
         sign = whitespace >> (match_char("+") | match_char("-")) << whitespace
         while True:
@@ -52,7 +52,7 @@ def simple_eval(tokens: str):
         return s.success(res)
 
     @Parser
-    def multiplicative(s: ParseState):
+    def multiplicative(s: ParseState) -> Result[Union[int, float]]:
         res, s = s.apply(_simple)
         op = whitespace >> (match_char("*") | match_char("/")) << whitespace
         while True:
@@ -67,7 +67,7 @@ def simple_eval(tokens: str):
         return s.success(res)
 
     @Parser
-    def number(s: ParseState):
+    def number(s: ParseState) -> Result[Union[int, float]]:
         sign, s = s.apply(whitespace >> (plus | minus | success(1)))
         value, s = s.apply(float_ | integer)
         return s.success(sign * value)

@@ -25,3 +25,11 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 line-length = 88
 target-version = "py38"
+
+[tool.mypy]
+strict = true
+exclude = "docs/conf.py"
+disable_error_code = "unused-ignore"
+
+[tool.pytest.ini_options]
+python_files = ["examples/*.py", "tests/*.py"]

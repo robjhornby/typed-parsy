@@ -72,16 +72,22 @@ WHERE = space >> string("WHERE") << space
 
 @dataclass
 class Select:
-    columns: List[ColumnExpression] = take(SELECT >> column_expr.sep_by(padding + string(",") + padding, min=1))
+    columns: List[ColumnExpression] = take(
+        SELECT >> column_expr.sep_by(padding + string(",") + padding, min=1)
+    )
     table: Table = take(FROM >> gather(Table))
-    where: Optional[Comparison] = take((WHERE >> gather(Comparison)).optional() << (padding + string(";")))
+    where: Optional[Comparison] = take(
+        (WHERE >> gather(Comparison)).optional() << (padding + string(";"))
+    )
 
 
 select = gather(Select)
 
 
 def test_select() -> None:
-    assert select.parse("SELECT thing, stuff, 123, 'hello' FROM my_table WHERE id = 1;") == Select(
+    assert select.parse(
+        "SELECT thing, stuff, 123, 'hello' FROM my_table WHERE id = 1;"
+    ) == Select(
         columns=[Field("thing"), Field("stuff"), Number(123), String("hello")],
         table=Table("my_table"),
         where=Comparison(left=Field("id"), operator=Operator.EQ, right=Number(1)),

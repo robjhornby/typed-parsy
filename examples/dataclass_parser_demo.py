@@ -84,8 +84,12 @@ class StudentWithScore:
 @dataclass
 class Grade:
     grade: int = take(string("Grade = ") >> integer << string("\n"))
-    students: List[Student] = take(string("Student number, Name\n") >> gather(Student).many() << regex(r"\n*"))
-    scores: List[Score] = take(string("Student number, Score\n") >> gather(Score).many() << regex(r"\n*"))
+    students: List[Student] = take(
+        string("Student number, Name\n") >> gather(Student).many() << regex(r"\n*")
+    )
+    scores: List[Score] = take(
+        string("Student number, Score\n") >> gather(Score).many() << regex(r"\n*")
+    )
 
 
 @dataclass
@@ -109,7 +113,10 @@ if __name__ == "__main__":
             grades=[
                 Grade(
                     grade=1,
-                    students=[Student(number=0, name="Phoebe"), Student(number=1, name="Rachel")],
+                    students=[
+                        Student(number=0, name="Phoebe"),
+                        Student(number=1, name="Rachel"),
+                    ],
                     scores=[Score(number=0, score=3), Score(number=1, score=7)],
                 ),
                 Grade(
@@ -119,7 +126,11 @@ if __name__ == "__main__":
                         Student(number=1, name="Tristan"),
                         Student(number=2, name="Aurora"),
                     ],
-                    scores=[Score(number=0, score=6), Score(number=1, score=3), Score(number=2, score=9)],
+                    scores=[
+                        Score(number=0, score=6),
+                        Score(number=1, score=3),
+                        Score(number=2, score=9),
+                    ],
                 ),
             ],
         ),
@@ -128,17 +139,26 @@ if __name__ == "__main__":
             grades=[
                 Grade(
                     grade=1,
-                    students=[Student(number=0, name="Ginny"), Student(number=1, name="Luna")],
+                    students=[
+                        Student(number=0, name="Ginny"),
+                        Student(number=1, name="Luna"),
+                    ],
                     scores=[Score(number=0, score=8), Score(number=1, score=7)],
                 ),
                 Grade(
                     grade=2,
-                    students=[Student(number=0, name="Harry"), Student(number=1, name="Hermione")],
+                    students=[
+                        Student(number=0, name="Harry"),
+                        Student(number=1, name="Hermione"),
+                    ],
                     scores=[Score(number=0, score=5), Score(number=1, score=10)],
                 ),
                 Grade(
                     grade=3,
-                    students=[Student(number=0, name="Fred"), Student(number=1, name="George")],
+                    students=[
+                        Student(number=0, name="Fred"),
+                        Student(number=1, name="George"),
+                    ],
                     scores=[Score(number=0, score=0), Score(number=1, score=0)],
                 ),
             ],

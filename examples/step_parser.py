@@ -15,7 +15,6 @@ class Person:
 def test_stateful_parser() -> None:
     @stateful_parser
     def person_parser(state: State) -> Result[Person]:
-
         name = state.apply(regex(r"\w+") << whitespace)
         age = state.apply((regex(r"\d+") << whitespace).map(int))
 
@@ -34,7 +33,6 @@ def test_stateful_parser() -> None:
 def test_stateful_parser_failure() -> None:
     @stateful_parser
     def person(s: State) -> Result[Person]:
-
         name = s.apply(regex(r"\w+") << whitespace)
         age = s.apply((regex(r"\d+") << whitespace).map(int).desc("digit"))
 

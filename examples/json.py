@@ -37,7 +37,9 @@ string_esc = string("\\") >> (
     | string("t").result("\t")
     | regex(r"u([0-9a-fA-F]{4})", group=1).map(lambda s: chr(int(s, 16)))
 )
-quoted = lexeme(string('"') >> (string_part | string_esc).many().concat() << string('"'))
+quoted = lexeme(
+    string('"') >> (string_part | string_esc).many().concat() << string('"')
+)
 
 # Data structures
 JSON = Union[Dict[str, "JSON"], List["JSON"], str, float, bool, None]

@@ -16,19 +16,18 @@ command = string_from("fd", "bk", "rt", "lt")
 number = regex(r"[0-9]+").map(int)
 optional_whitespace = regex(r"\s*")
 eol = string("\n")
-line = (optional_whitespace >> command).pair(whitespace >> number) << (eof | eol | (whitespace >> eol))
+line = (optional_whitespace >> command).pair(whitespace >> number) << (
+    eof | eol | (whitespace >> eol)
+)
 lexer = line.many()
 
 
 def test_lexer() -> None:
-    assert (
-        lexer.parse(
-            """fd 1
+    assert lexer.parse(
+        """fd 1
 bk 2
 """
-        )
-        == [("fd", 1), ("bk", 2)]
-    )
+    ) == [("fd", 1), ("bk", 2)]
 
 
 """
@@ -44,11 +43,8 @@ class Instruction:
 
 instruction_parser = gather(Instruction).many()
 
-assert (
-    instruction_parser.parse(
-        """fd 1
+assert instruction_parser.parse(
+    """fd 1
 bk 2
 """
-    )
-    == [Instruction("fd", 1), Instruction("bk", 2)]
-)
+) == [Instruction("fd", 1), Instruction("bk", 2)]

@@ -34,7 +34,9 @@ mixed_groups = regex(r"a(?P<first>b)(?P<second>c)", group=("first", 2))
 assert mixed_groups.parse("abc") == ("b", "c")
 
 # Combining with more
-parser = regex(r"(?P<ID>\d+): (?P<first>\d+) \+ (?P<second>\d+)", group=("ID", "first", "second"))
+parser = regex(
+    r"(?P<ID>\d+): (?P<first>\d+) \+ (?P<second>\d+)", group=("ID", "first", "second")
+)
 mapped_parser = parser.combine(lambda id, first, second: {id: int(first) + int(second)})
 
 assert mapped_parser.parse("123: 3 + 4") == {"123": 7}

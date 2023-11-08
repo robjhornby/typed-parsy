@@ -23,7 +23,9 @@ from parsy import (
     string,
     string_from,
 )
-from parsy import test_char as parsy_test_char  # to stop pytest thinking this function is a test
+from parsy import (
+    test_char as parsy_test_char,
+)  # to stop pytest thinking this function is a test
 from parsy import whitespace
 
 
@@ -278,7 +280,9 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ab.at_least(2).parse("abab"), ["ab", "ab"])
         self.assertEqual(ab.at_least(2).parse("ababab"), ["ab", "ab", "ab"])
         self.assertRaises(ParseError, ab.at_least(2).parse, "ab")
-        self.assertEqual(ab.at_least(2).parse_partial("abababc"), (["ab", "ab", "ab"], "c"))
+        self.assertEqual(
+            ab.at_least(2).parse_partial("abababc"), (["ab", "ab", "ab"], "c")
+        )
 
     def test_until(self) -> None:
         until = string("s").until(string("x"))
@@ -385,7 +389,11 @@ class TestParser(unittest.TestCase):
         letter_tuple = letter.tuple()
         int_parser = regex(r"\d")
         six_int_parser = (
-            (int_parser & int_parser).append(int_parser).append(int_parser).append(int_parser).append(int_parser)
+            (int_parser & int_parser)
+            .append(int_parser)
+            .append(int_parser)
+            .append(int_parser)
+            .append(int_parser)
         )
         barcode = letter_tuple + six_int_parser
 
@@ -401,7 +409,11 @@ class TestParser(unittest.TestCase):
         letter_tuple = letter.tuple()
         int_parser = regex(r"\d").map(int)
         six_int_parser = (
-            (int_parser & int_parser).append(int_parser).append(int_parser).append(int_parser).append(int_parser)
+            (int_parser & int_parser)
+            .append(int_parser)
+            .append(int_parser)
+            .append(int_parser)
+            .append(int_parser)
         )
         barcode = letter_tuple + six_int_parser
 
@@ -437,7 +449,6 @@ class TestParser(unittest.TestCase):
         self.assertEqual(numeric_parser.parse("12"), 3.0)
 
     def test_seq(self) -> None:
-
         a = regex("a")
         b = regex("b")
         num = regex(r"[\d]").map(int)
@@ -511,7 +522,9 @@ class TestParser(unittest.TestCase):
             titles.parse("foo")
 
         ex = err.exception
-        self.assertEqual(str(ex), """expected one of 'Mr', 'Mr.', 'Mrs', 'Mrs.' at 0:0""")
+        self.assertEqual(
+            str(ex), """expected one of 'Mr', 'Mr.', 'Mrs', 'Mrs.' at 0:0"""
+        )
 
     def test_string_from_transform(self) -> None:
         titles = string_from("Mr", "Mr.", "Mrs", "Mrs.", transform=lambda s: s.lower())
@@ -546,7 +559,9 @@ class TestParser(unittest.TestCase):
         self.assertRaises(ParseError, digit.parse, "x")
 
     def test_decimal_digit(self) -> None:
-        self.assertEqual(decimal_digit.at_least(1).concat().parse("9876543210"), "9876543210")
+        self.assertEqual(
+            decimal_digit.at_least(1).concat().parse("9876543210"), "9876543210"
+        )
         self.assertRaises(ParseError, decimal_digit.parse, "¹")
 
     def test_should_fail(self) -> None:
@@ -568,7 +583,16 @@ class TestParser(unittest.TestCase):
 
         self.assertEqual(
             not_a_digit.parse_partial("a"),
-            (Result(status=False, index=-1, value=None, furthest=0, expected=frozenset({"a digit"})), "a"),
+            (
+                Result(
+                    status=False,
+                    index=-1,
+                    value=None,
+                    furthest=0,
+                    expected=frozenset({"a digit"}),
+                ),
+                "a",
+            ),
         )
         self.assertRaises(ParseError, not_a_digit.parse_partial, "1")
 
@@ -635,7 +659,9 @@ def test_recursive_parser() -> None:
         yield parser
 
     # The explicit type annotation of `Parser[RT]` could be omitted
-    parser: Parser[RT] = digits | string("(") >> _parser.sep_by(string(" ")) << string(")")
+    parser: Parser[RT] = digits | string("(") >> _parser.sep_by(string(" ")) << string(
+        ")"
+    )
 
     result = parser.parse("(0 1 (2 3 (4 5)))")
 

@@ -12,10 +12,9 @@ def test_permutation_parser() -> None:
         )
         id: str = take(regex(r"\d{3}-\d{3}") << (whitespace | eof))
 
-    person_parser = gather_perm(Person)
+    parser = gather_perm(Person)
 
-    person = person_parser.parse("Frodo 2000 123-456")
-    person_b = person_parser.parse("123-456 2000 Frodo")
-    print(person)
-    print(person_b)
-    assert person == person_b
+    person = parser.parse("Frodo 2000 123-456")
+    person_alternative = parser.parse("123-456 2000 Frodo")
+    assert person == Person(name="Frodo", age=2000, id="123-456")
+    assert person == person_alternative

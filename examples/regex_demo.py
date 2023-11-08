@@ -20,8 +20,8 @@ assert tuple_int_groups.parse("abc") == ("b", "c")
 
 # Use a 1-tuple group. Python's `re` module treats a 1-tuple group the same as a single integer group
 # meaning the result is just the string which matched, not wrapped in a tuple. Parsy's `regex` does the same.
-tuple_int_groups = regex(r"a(b)", group=(1,))
-assert tuple_int_groups.parse("ab") == "b"
+tuple_int_singleton = regex(r"a(b)", group=(1,))
+assert tuple_int_singleton.parse("ab") == "b"
 
 
 # Use multiple groups specified by a tuple of named capture groups

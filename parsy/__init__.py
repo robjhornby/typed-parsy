@@ -904,12 +904,15 @@ def take(
 ) -> OUT:
     if metadata is None:
         metadata = {}
-    return field(
-        init=init,
-        repr=repr,
-        hash=hash,
-        compare=compare,
-        metadata={**metadata, "parser": parser},
+    return cast(
+        OUT,
+        field(
+            init=init,
+            repr=repr,
+            hash=hash,
+            compare=compare,
+            metadata={**metadata, "parser": parser},
+        ),
     )
 
 

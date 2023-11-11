@@ -276,6 +276,7 @@ class TestParser(unittest.TestCase):
         until = string("s").until(string("x"), min=3, max=5)
 
         self.assertEqual(until.parse_partial("sssx"), (3 * ["s"], "x"))
+        self.assertEqual(until.parse_partial("ssssx"), (4 * ["s"], "x"))
         self.assertEqual(until.parse_partial("sssssx"), (5 * ["s"], "x"))
 
         with self.assertRaises(ParseError) as cm:

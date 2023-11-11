@@ -322,28 +322,22 @@ class Parser(Generic[_OUT_co]):
             values: List[_OUT_co] = []
             times = 0
             while True:
-                # try parser first
-                res = other(state)
-                if res.status and times >= min:
-                    return Result.success(state.index, values)
+                if times >= min:
+                    res = other(state)
+                    if res.status:
+                        return Result.success(state.index, values)
 
-                # exceeded max?
                 if times >= max:
-                    # return failure, it matched parser more than max times
+                    # Didn't find other parser within `max` matches
                     return Result.failure(state.index, f"at most {max} items")
 
-                # failed, try parser
                 result = self(state)
                 if result.status:
-                    # consume
                     values.append(result.value)
                     state = state.at(result.index)
                     times += 1
-                elif times >= min:
-                    # return failure, parser is not followed by other
-                    return Result.failure(state.index, "did not find other parser")
                 else:
-                    # return failure, it did not match parser at least min times
+                    # Did not match parser at least min times
                     return Result.failure(
                         state.index, f"at least {min} items; got {times} item(s)"
                     )

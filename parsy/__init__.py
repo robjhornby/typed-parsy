@@ -39,30 +39,26 @@ from typing_extensions import (
     Unpack,
 )
 
-OUT = TypeVar("OUT")
-OUT1 = TypeVar("OUT1")
-OUT2 = TypeVar("OUT2")
-OUT3 = TypeVar("OUT3")
-OUT4 = TypeVar("OUT4")
-OUT5 = TypeVar("OUT5")
-OUT6 = TypeVar("OUT6")
-OUT_T = TypeVarTuple("OUT_T")
-OUT_T2 = TypeVarTuple("OUT_T2")
+T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+T4 = TypeVar("T4")
+T5 = TypeVar("T5")
+T6 = TypeVar("T6")
+
+Ts = TypeVarTuple("Ts")
+
 OUT_co = TypeVar("OUT_co", covariant=True)
-OUT2_co = TypeVar("OUT2_co", covariant=True)
 
 P = ParamSpec("P")
 
-T = TypeVar("T")
 T_co = TypeVar("T_co", covariant=True)
-
-_T_contra = TypeVar("_T_contra", contravariant=True)
-
-_T_co = TypeVar("_T_co", covariant=True)
+T_contra = TypeVar("T_contra", contravariant=True)
 
 
-class SupportsAdd(Protocol[_T_contra, _T_co]):
-    def __add__(self, __x: _T_contra) -> _T_co:
+class SupportsAdd(Protocol[T_contra, T_co]):
+    def __add__(self, __x: T_contra) -> T_co:
         ...
 
 
@@ -82,10 +78,10 @@ class ParseState:
     def at(self: ParseState, index: int) -> ParseState:
         return ParseState(self.stream, index)
 
-    def apply(self, parser: Parser[OUT]) -> Tuple[OUT, ParseState]:
+    def apply(self, parser: Parser[T]) -> Tuple[T, ParseState]:
         return parser.parse_state(self)
 
-    def success(self, value: OUT) -> Result[OUT]:
+    def success(self, value: T) -> Result[T]:
         return Result.success(self.index, value)
 
 
@@ -93,11 +89,11 @@ class ParseState:
 class State:
     state: ParseState
 
-    def apply(self, parser: Parser[OUT]) -> OUT:
+    def apply(self, parser: Parser[T]) -> T:
         result, self.state = parser.parse_state(self.state)
         return result
 
-    def success(self, value: OUT) -> Result[OUT]:
+    def success(self, value: T) -> Result[T]:
         return Result.success(self.state.index, value)
 
     @property
@@ -105,9 +101,9 @@ class State:
         return self.state.stream[self.state.index :]
 
 
-def stateful_parser(fn: Callable[[State], Result[OUT]]) -> Parser[OUT]:
+def stateful_parser(fn: Callable[[State], Result[T]]) -> Parser[T]:
     @Parser
-    def the_parser(parse_state: ParseState) -> Result[OUT]:
+    def the_parser(parse_state: ParseState) -> Result[T]:
         state = State(parse_state)
         return fn(state)
 
@@ -152,7 +148,7 @@ class Result(Generic[OUT_co]):
     expected: FrozenSet[str]
 
     @staticmethod
-    def success(index: int, value: OUT) -> Result[OUT]:
+    def success(index: int, value: T) -> Result[T]:
         return Result(True, index, value, -1, frozenset())
 
     @staticmethod
@@ -160,7 +156,7 @@ class Result(Generic[OUT_co]):
         return Result(False, -1, None, index, frozenset([expected]))
 
     # collect the furthest failure from self and other
-    def aggregate(self: Result[OUT], other: Optional[Result[Any]]) -> Result[OUT]:
+    def aggregate(self: Result[T], other: Optional[Result[Any]]) -> Result[T]:
         if not other:
             return self
 
@@ -203,7 +199,7 @@ class Parser(Generic[OUT_co]):
     def __call__(self, state: ParseState) -> Result[OUT_co]:
         try:
             return self.wrapped_fn(state)
-        except ResultAsException as exception:  # type: ignore
+        except ResultAsException as exception:  # type: ignore[unused-ignore]
             return exception.result  #  type: ignore
 
     def parse(self, stream: str) -> OUT_co:
@@ -232,12 +228,10 @@ class Parser(Generic[OUT_co]):
         else:
             raise ResultAsException(result)
 
-    def bind(
-        self: Parser[OUT1], bind_fn: Callable[[OUT1], Parser[OUT2]]
-    ) -> Parser[OUT2]:
+    def bind(self: Parser[T1], bind_fn: Callable[[T1], Parser[T2]]) -> Parser[T2]:
         @Parser
-        def bound_parser(state: ParseState) -> Result[OUT2]:
-            result: Result[OUT1] = self(state)
+        def bound_parser(state: ParseState) -> Result[T2]:
+            result: Result[T1] = self(state)
 
             if result.status:
                 next_parser = bind_fn(result.value)
@@ -247,19 +241,19 @@ class Parser(Generic[OUT_co]):
 
         return bound_parser
 
-    def map(self: Parser[OUT1], map_fn: Callable[[OUT1], OUT2]) -> Parser[OUT2]:
+    def map(self: Parser[T1], map_fn: Callable[[T1], T2]) -> Parser[T2]:
         return self.bind(lambda res: success(map_fn(res)))
 
     def concat(self: Parser[List[str]]) -> Parser[str]:
         return self.map("".join)
 
-    def then(self: Parser[Any], other: Parser[OUT2]) -> Parser[OUT2]:
+    def then(self: Parser[Any], other: Parser[T2]) -> Parser[T2]:
         return (self & other).map(lambda t: t[1])
 
-    def skip(self: Parser[OUT1], other: Parser[Any]) -> Parser[OUT1]:
+    def skip(self: Parser[T1], other: Parser[Any]) -> Parser[T1]:
         return (self & other).map(lambda t: t[0])
 
-    def result(self: Parser[Any], res: OUT2) -> Parser[OUT2]:
+    def result(self: Parser[Any], res: T2) -> Parser[T2]:
         return self >> success(res)
 
     def times(
@@ -302,18 +296,16 @@ class Parser(Generic[OUT_co]):
         return self.times(min=n, max=float("inf"))
 
     @overload
-    def optional(
-        self: Parser[OUT1], default: Literal[None] = None
-    ) -> Parser[OUT1 | None]:
+    def optional(self: Parser[T1], default: Literal[None] = None) -> Parser[T1 | None]:
         ...
 
     @overload
-    def optional(self: Parser[OUT1], default: OUT2) -> Parser[OUT1 | OUT2]:
+    def optional(self: Parser[T1], default: T2) -> Parser[T1 | T2]:
         ...
 
     def optional(
-        self: Parser[OUT1], default: Optional[OUT2] = None
-    ) -> Parser[OUT1 | Optional[OUT2]]:
+        self: Parser[T1], default: Optional[T2] = None
+    ) -> Parser[T1 | Optional[T2]]:
         return self.times(0, 1).map(lambda v: v[0] if v else default)
 
     def until(
@@ -356,13 +348,13 @@ class Parser(Generic[OUT_co]):
         return until_parser
 
     def sep_by(
-        self: Parser[OUT],
+        self: Parser[T],
         sep: Parser[Any],
         *,
         min: int = 0,
         max: int | float = float("inf"),
-    ) -> Parser[List[OUT]]:
-        zero_times = success(cast(List[OUT], []))
+    ) -> Parser[List[T]]:
+        zero_times = success(cast(List[T], []))
         if max == 0:
             return zero_times
 
@@ -387,12 +379,12 @@ class Parser(Generic[OUT_co]):
     ) -> Parser[Tuple[Tuple[int, int], OUT_co, Tuple[int, int]]]:
         return seq(line_info, self, line_info)
 
-    def tag(self: Parser[OUT], name: str) -> Parser[Tuple[str, OUT]]:
+    def tag(self: Parser[T], name: str) -> Parser[Tuple[str, T]]:
         return self.map(lambda v: (name, v))
 
-    def should_fail(self: Parser[OUT], description: str) -> Parser[Result[OUT]]:
+    def should_fail(self: Parser[T], description: str) -> Parser[Result[T]]:
         @Parser
-        def fail_parser(state: ParseState) -> Result[Result[OUT]]:
+        def fail_parser(state: ParseState) -> Result[Result[T]]:
             res = self(state)
             if res.status:
                 return Result.failure(state.index, description)
@@ -403,51 +395,51 @@ class Parser(Generic[OUT_co]):
     # Special cases for adding tuples
     # We have to unroll each number of tuple elements for `other` because PEP-646
     # only allows one "Unpack" in a Tuple (if we could have two, the return
-    # type could use two Unpacks
+    # type could use two Unpacks to cover most of these cases)
     @overload
     def __add__(
-        self: Parser[Tuple[T, Unpack[OUT_T]]], other: Parser[Tuple[OUT1]]
-    ) -> Parser[Tuple[T, Unpack[OUT_T], OUT1]]:
+        self: Parser[Tuple[T, Unpack[Ts]]], other: Parser[Tuple[T1]]
+    ) -> Parser[Tuple[T, Unpack[Ts], T1]]:
         ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[OUT]], other: Parser[Tuple[T, Unpack[OUT_T]]]
-    ) -> Parser[Tuple[OUT, T, Unpack[OUT_T]]]:
+        self: Parser[Tuple[T]], other: Parser[Tuple[T1, Unpack[Ts]]]
+    ) -> Parser[Tuple[T, T1, Unpack[Ts]]]:
         ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[T, Unpack[OUT_T]]], other: Parser[Tuple[OUT1, OUT2]]
-    ) -> Parser[Tuple[T, Unpack[OUT_T], OUT1, OUT2]]:
+        self: Parser[Tuple[T, Unpack[Ts]]], other: Parser[Tuple[T1, T2]]
+    ) -> Parser[Tuple[T, Unpack[Ts], T1, T2]]:
         ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[T, Unpack[OUT_T]]], other: Parser[Tuple[OUT1, OUT2, OUT3]]
-    ) -> Parser[Tuple[T, Unpack[OUT_T], OUT1, OUT2, OUT3]]:
+        self: Parser[Tuple[T, Unpack[Ts]]], other: Parser[Tuple[T1, T2, T3]]
+    ) -> Parser[Tuple[T, Unpack[Ts], T1, T2, T3]]:
         ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[T, Unpack[OUT_T]]],
-        other: Parser[Tuple[OUT1, OUT2, OUT3, OUT4]],
-    ) -> Parser[Tuple[T, Unpack[OUT_T], OUT1, OUT2, OUT3, OUT4]]:
+        self: Parser[Tuple[T, Unpack[Ts]]],
+        other: Parser[Tuple[T1, T2, T3, T4]],
+    ) -> Parser[Tuple[T, Unpack[Ts], T1, T2, T3, T4]]:
         ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[T, Unpack[OUT_T]]],
-        other: Parser[Tuple[OUT1, OUT2, OUT3, OUT4, OUT5]],
-    ) -> Parser[Tuple[T, Unpack[OUT_T], OUT1, OUT2, OUT3, OUT4, OUT5]]:
+        self: Parser[Tuple[T, Unpack[Ts]]],
+        other: Parser[Tuple[T1, T2, T3, T4, T5]],
+    ) -> Parser[Tuple[T, Unpack[Ts], T1, T2, T3, T4, T5]]:
         ...
 
     # This covers tuples where `other` has more elements than the above overloads
     # and the `self` and `other` tuples have the same homogeneous type
     @overload
     def __add__(
-        self: Parser[Tuple[OUT, ...]], other: Parser[Tuple[OUT, ...]]
-    ) -> Parser[Tuple[OUT, ...]]:
+        self: Parser[Tuple[T, ...]], other: Parser[Tuple[T, ...]]
+    ) -> Parser[Tuple[T, ...]]:
         ...
 
     # Cover the rest of cases which can't return a homogeneous tuple
@@ -460,21 +452,21 @@ class Parser(Generic[OUT_co]):
     # Addable parsers which return the same type
     @overload
     def __add__(
-        self: Parser[SupportsAdd[Any, _T_co]], other: Parser[SupportsAdd[Any, _T_co]]
-    ) -> Parser[_T_co]:
+        self: Parser[SupportsAdd[Any, T_co]], other: Parser[SupportsAdd[Any, T_co]]
+    ) -> Parser[T_co]:
         ...
 
     def __add__(self: Parser[Any], other: Parser[Any]) -> Parser[Any]:
         return (self & other).combine(operator.add)
 
-    def __mul__(self: Parser[OUT], other: range | int) -> Parser[List[OUT]]:
+    def __mul__(self: Parser[T], other: range | int) -> Parser[List[T]]:
         if isinstance(other, range):
             return self.times(other.start, other.stop - 1)
         return self.times(other)
 
-    def __or__(self: Parser[OUT1], other: Parser[OUT2]) -> Parser[Union[OUT1, OUT2]]:
+    def __or__(self: Parser[T1], other: Parser[T2]) -> Parser[Union[T1, T2]]:
         @Parser
-        def alt_parser(state: ParseState) -> Result[Union[OUT1, OUT2]]:
+        def alt_parser(state: ParseState) -> Result[Union[T1, T2]]:
             result0 = None
 
             result1 = self(state).aggregate(result0)
@@ -486,9 +478,9 @@ class Parser(Generic[OUT_co]):
 
         return alt_parser
 
-    def __and__(self: Parser[OUT1], other: Parser[OUT2]) -> Parser[tuple[OUT1, OUT2]]:
+    def __and__(self: Parser[T1], other: Parser[T2]) -> Parser[tuple[T1, T2]]:
         @Parser
-        def and_parser(state: ParseState) -> Result[tuple[OUT1, OUT2]]:
+        def and_parser(state: ParseState) -> Result[tuple[T1, T2]]:
             self_result = self(state)
             if not self_result.status:
                 return self_result  # type: ignore
@@ -504,21 +496,21 @@ class Parser(Generic[OUT_co]):
 
         return and_parser
 
-    def pair(self: Parser[OUT1], other: Parser[OUT2]) -> Parser[tuple[OUT1, OUT2]]:
+    def pair(self: Parser[T1], other: Parser[T2]) -> Parser[tuple[T1, T2]]:
         """TODO alternative name for `&`, decide on naming"""
         return self & other
 
-    def tuple(self: Parser[OUT]) -> Parser[Tuple[OUT]]:
+    def tuple(self: Parser[T]) -> Parser[Tuple[T]]:
         """Wrap the result in a tuple."""
         return self.map(lambda value: (value,))
 
-    def list(self: Parser[OUT]) -> Parser[List[OUT]]:
+    def list(self: Parser[T]) -> Parser[List[T]]:
         """Wrap the result in a list."""
         return self.map(lambda value: [value])
 
     def append(
-        self: Parser[Tuple[Unpack[OUT_T]]], other: Parser[OUT2]
-    ) -> Parser[Tuple[Unpack[OUT_T], OUT2]]:
+        self: Parser[Tuple[Unpack[Ts]]], other: Parser[T2]
+    ) -> Parser[Tuple[Unpack[Ts], T2]]:
         """
         Take a parser which produces a tuple of values, and add another parser's result
         to the end of that tuples
@@ -530,24 +522,22 @@ class Parser(Generic[OUT_co]):
         )
 
     def combine(
-        self: Parser[Tuple[Unpack[OUT_T]]], combine_fn: Callable[[Unpack[OUT_T]], OUT2]
-    ) -> Parser[OUT2]:
+        self: Parser[Tuple[Unpack[Ts]]], combine_fn: Callable[[Unpack[Ts]], T2]
+    ) -> Parser[T2]:
         """
         Apply ``combine_fn`` to the parser result, which must be a tuple. The result
         is passed as `*args` to ``combine_fn``.
         """
         return self.bind(lambda value: success(combine_fn(*value)))
 
-    def zip(
-        self: Parser[OUT], iterable: Sequence[OUT2]
-    ) -> Parser[List[Tuple[OUT2, OUT]]]:
+    def zip(self: Parser[T], iterable: Sequence[T2]) -> Parser[List[Tuple[T2, T]]]:
         return self.times(len(iterable)).map(lambda values: list(zip(iterable, values)))
 
     # haskelley operators, for fun #
 
     # >>
 
-    def __rshift__(self, other: Parser[OUT]) -> Parser[OUT]:
+    def __rshift__(self, other: Parser[T]) -> Parser[T]:
         return self.then(other)
 
     # <<
@@ -575,7 +565,7 @@ index = Parser(lambda state: Result.success(state.index, state.index))
 line_info = Parser(lambda state: Result.success(state.index, line_info_at(state)))
 
 
-def success(val: OUT) -> Parser[OUT]:
+def success(val: T) -> Parser[T]:
     return Parser(lambda state: Result.success(state.index, val))
 
 
@@ -749,53 +739,51 @@ def regex(
 # Each number of args needs to be typed separately
 @overload
 def seq(
-    __parser_1: Parser[OUT1],
-    __parser_2: Parser[OUT2],
-    __parser_3: Parser[OUT3],
-    __parser_4: Parser[OUT4],
-    __parser_5: Parser[OUT5],
-    __parser_6: Parser[OUT6],
-) -> Parser[Tuple[OUT1, OUT2, OUT3, OUT4, OUT5, OUT6]]:
+    __parser_1: Parser[T1],
+    __parser_2: Parser[T2],
+    __parser_3: Parser[T3],
+    __parser_4: Parser[T4],
+    __parser_5: Parser[T5],
+    __parser_6: Parser[T6],
+) -> Parser[Tuple[T1, T2, T3, T4, T5, T6]]:
     ...
 
 
 @overload
 def seq(
-    __parser_1: Parser[OUT1],
-    __parser_2: Parser[OUT2],
-    __parser_3: Parser[OUT3],
-    __parser_4: Parser[OUT4],
-    __parser_5: Parser[OUT5],
-) -> Parser[Tuple[OUT1, OUT2, OUT3, OUT4, OUT5]]:
+    __parser_1: Parser[T1],
+    __parser_2: Parser[T2],
+    __parser_3: Parser[T3],
+    __parser_4: Parser[T4],
+    __parser_5: Parser[T5],
+) -> Parser[Tuple[T1, T2, T3, T4, T5]]:
     ...
 
 
 @overload
 def seq(
-    __parser_1: Parser[OUT1],
-    __parser_2: Parser[OUT2],
-    __parser_3: Parser[OUT3],
-    __parser_4: Parser[OUT4],
-) -> Parser[Tuple[OUT1, OUT2, OUT3, OUT4]]:
+    __parser_1: Parser[T1],
+    __parser_2: Parser[T2],
+    __parser_3: Parser[T3],
+    __parser_4: Parser[T4],
+) -> Parser[Tuple[T1, T2, T3, T4]]:
     ...
 
 
 @overload
 def seq(
-    __parser_1: Parser[OUT1], __parser_2: Parser[OUT2], __parser_3: Parser[OUT3]
-) -> Parser[Tuple[OUT1, OUT2, OUT3]]:
+    __parser_1: Parser[T1], __parser_2: Parser[T2], __parser_3: Parser[T3]
+) -> Parser[Tuple[T1, T2, T3]]:
     ...
 
 
 @overload
-def seq(
-    __parser_1: Parser[OUT1], __parser_2: Parser[OUT2]
-) -> Parser[Tuple[OUT1, OUT2]]:
+def seq(__parser_1: Parser[T1], __parser_2: Parser[T2]) -> Parser[Tuple[T1, T2]]:
     ...
 
 
 @overload
-def seq(__parser_1: Parser[OUT1]) -> Parser[Tuple[OUT1]]:
+def seq(__parser_1: Parser[T1]) -> Parser[Tuple[T1]]:
     ...
 
 
@@ -806,7 +794,7 @@ def seq(*parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]:
 
 def seq(*parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]:
     if not parsers:
-        raise ValueError()
+        raise ValueError("The seq parser requires at least one argument")
     first, *remainder = parsers
     parser = first.tuple()
     for p in remainder:
@@ -843,9 +831,9 @@ def char_from(string: str) -> Parser[str]:
     return test_char(lambda c: c in string, "[" + string + "]")
 
 
-def peek(parser: Parser[OUT]) -> Parser[OUT]:
+def peek(parser: Parser[T]) -> Parser[T]:
     @Parser
-    def peek_parser(state: ParseState) -> Result[OUT]:
+    def peek_parser(state: ParseState) -> Result[T]:
         result = parser(state)
         if result.status:
             return Result.success(state.index, result.value)
@@ -894,18 +882,24 @@ def from_enum(enum_cls: type[E], transform: Callable[[str], str] = noop) -> Pars
 
 # Dataclass parsers
 def take(
-    parser: Parser[OUT],
+    parser: Parser[T],
     *,
     init: bool = True,
     repr: bool = True,
     hash: Union[bool, None] = None,
     compare: bool = True,
     metadata: Union[Mapping[Any, Any], None] = None,
-) -> OUT:
+) -> T:
+    """
+    A dataclass field descriptor used to associate a parser with a dataclass field.
+
+    Use this in a dataclass in conjunction with `gather` to concisely define parsers
+    which return dataclass instances.
+    """
     if metadata is None:
         metadata = {}
     return cast(
-        OUT,
+        T,
         field(
             init=init,
             repr=repr,
@@ -921,14 +915,14 @@ class DataClassProtocol(Protocol):
     __init__: Callable[..., None]
 
 
-OUT_D = TypeVar("OUT_D", bound=DataClassProtocol)
+T_D = TypeVar("T_D", bound=DataClassProtocol)
 
 
-def gather(datatype: Type[OUT_D]) -> Parser[OUT_D]:
+def gather(datatype: Type[T_D]) -> Parser[T_D]:
     """Parse all fields of a dataclass parser in order."""
 
     @Parser
-    def parser(state: ParseState) -> Result[OUT_D]:
+    def parser(state: ParseState) -> Result[T_D]:
         parsed_fields: Dict[str, Any] = {}
         for dataclass_field in fields(datatype):
             if "parser" not in dataclass_field.metadata:
@@ -945,11 +939,11 @@ def gather(datatype: Type[OUT_D]) -> Parser[OUT_D]:
     return parser
 
 
-def gather_perm(datatype: Type[OUT_D]) -> Parser[OUT_D]:
+def gather_perm(datatype: Type[T_D]) -> Parser[T_D]:
     """Parse all fields of a dataclass parser in any order."""
 
     @Parser
-    def data_parser(state: ParseState) -> Result[OUT_D]:
+    def parser(state: ParseState) -> Result[T_D]:
         parsed_fields: Dict[str, Any] = {}
         parsers: Dict[str, Parser[Any]] = {
             field.name: field.metadata["parser"]
@@ -975,4 +969,4 @@ def gather_perm(datatype: Type[OUT_D]) -> Parser[OUT_D]:
 
         return Result.success(state.index, datatype(**parsed_fields))
 
-    return data_parser
+    return parser

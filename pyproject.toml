@@ -3,20 +3,22 @@ name = "parsy"
 version = "0.1.0"
 description = ""
 authors = ["Your Name <you@example.com>"]
-readme = "README.rst"
+readme = "README.md"
 packages = [{include = "parsy"}]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = ">=3.7,<3.12"
 typing-extensions = "^4.5.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.3.1"
 black = "^23.3.0"
 devtools = "^0.12.2"
+mypy = {git = "https://github.com/python/mypy.git", python = ">=3.8"}
 sphinx = {version = "^7.2.6", python = ">=3.9,<4.0"}
 furo = {version = "^2023.9.10", python = ">=3.8"}
-mypy = {git = "https://github.com/python/mypy.git", python = ">=3.8"}
+myst-parser = {version = "^2", python = ">=3.8"}
+sphinx-copybutton = "^0.5.2"
 
 [build-system]
 requires = ["poetry-core"]
@@ -29,7 +31,6 @@ target-version = "py38"
 [tool.mypy]
 strict = true
 exclude = "docs/conf.py"
-disable_error_code = "unused-ignore"
 
 [tool.pytest.ini_options]
 python_files = ["examples/*.py", "tests/*.py"]

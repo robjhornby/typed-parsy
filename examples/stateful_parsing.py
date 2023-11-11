@@ -1,3 +1,15 @@
+"""
+Debugging most combined parsers is difficult in Parsy, apart from `@generate` parsers
+because you can easily set a breakpoint somewhere where the text being parsed and its
+intermediate results are visible.
+`@generate` can't be type annotated because the Python type system requires all
+yield and send types to be homogeneous in a generator (i.e. you can yield a string
+parser and yield a bool parser in a single @generate parser in a type-safe way).
+
+Stateful parsers are an attempt at an alternative syntax. Instead of `yield parser`,
+it's do `state.apply(parser)`. The state of the parser is available in debugging
+(input text, index, and any results already parsed in the current parser).
+"""
 from dataclasses import dataclass
 
 import pytest
@@ -17,6 +29,9 @@ def test_stateful_parser() -> None:
     def person_parser(state: State) -> Result[Person]:
         name = state.apply(regex(r"\w+") << whitespace)
         age = state.apply((regex(r"\d+") << whitespace).map(int))
+
+        # Example: setting a breakpoint here, we'll see the parsed values for name and
+        # age in a debugger, and `state` will contain the input text and current index
 
         if age % 2:
             # Parsing depends on previously parsed values

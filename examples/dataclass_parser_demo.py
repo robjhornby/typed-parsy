@@ -3,6 +3,8 @@ from typing import List
 
 from parsy import gather, regex, string, take
 
+# Create a parser for the following text and then run it and see the results
+
 text = """Sample text
 
 A selection of students from Riverdale High and Hogwarts took part in a quiz. This is a record of their scores.
@@ -76,13 +78,13 @@ class Score:
 
 @dataclass
 class StudentWithScore:
-    name: str
     number: int
+    name: str
     score: int
 
 
 @dataclass
-class Grade:
+class GradeRaw:
     grade: int = take(string("Grade = ") >> integer << string("\n"))
     students: List[Student] = take(
         string("Student number, Name\n") >> gather(Student).many() << regex(r"\n*")
@@ -93,9 +95,30 @@ class Grade:
 
 
 @dataclass
+class Grade:
+    """Grade data in a more useful format than what's in the raw text."""
+
+    grade: int
+    student_scores: List[StudentWithScore]
+
+    @staticmethod
+    def from_raw_grade(grade: GradeRaw) -> "Grade":
+        """Transform from the raw grade structure into something more useful."""
+        students = {student.number: student.name for student in grade.students}
+
+        student_scores = [
+            StudentWithScore(score.number, students[score.number], score.score)
+            for score in grade.scores
+        ]
+
+        return Grade(grade.grade, student_scores)
+
+
+@dataclass
 class School:
     name: str = take(string("School = ") >> any_text << string("\n"))
-    grades: List[Grade] = take(gather(Grade).many())
+    # Note that we map from GradeRaw to a more useful transformed Grade structure
+    grades: List[Grade] = take(gather(GradeRaw).map(Grade.from_raw_grade).many())
 
 
 @dataclass
@@ -104,32 +127,26 @@ class File:
     schools: List[School] = take(gather(School).many())
 
 
-if __name__ == "__main__":
+def test_combined_dataclass_demo():
     file = gather(File).parse(text)
-    print(file.schools)
+
     assert file.schools == [
         School(
             name="Riverdale High",
             grades=[
                 Grade(
                     grade=1,
-                    students=[
-                        Student(number=0, name="Phoebe"),
-                        Student(number=1, name="Rachel"),
+                    student_scores=[
+                        StudentWithScore(number=0, name="Phoebe", score=3),
+                        StudentWithScore(number=1, name="Rachel", score=7),
                     ],
-                    scores=[Score(number=0, score=3), Score(number=1, score=7)],
                 ),
                 Grade(
                     grade=2,
-                    students=[
-                        Student(number=0, name="Angela"),
-                        Student(number=1, name="Tristan"),
-                        Student(number=2, name="Aurora"),
-                    ],
-                    scores=[
-                        Score(number=0, score=6),
-                        Score(number=1, score=3),
-                        Score(number=2, score=9),
+                    student_scores=[
+                        StudentWithScore(number=0, name="Angela", score=6),
+                        StudentWithScore(number=1, name="Tristan", score=3),
+                        StudentWithScore(number=2, name="Aurora", score=9),
                     ],
                 ),
             ],
@@ -139,27 +156,24 @@ if __name__ == "__main__":
             grades=[
                 Grade(
                     grade=1,
-                    students=[
-                        Student(number=0, name="Ginny"),
-                        Student(number=1, name="Luna"),
+                    student_scores=[
+                        StudentWithScore(number=0, name="Ginny", score=8),
+                        StudentWithScore(number=1, name="Luna", score=7),
                     ],
-                    scores=[Score(number=0, score=8), Score(number=1, score=7)],
                 ),
                 Grade(
                     grade=2,
-                    students=[
-                        Student(number=0, name="Harry"),
-                        Student(number=1, name="Hermione"),
+                    student_scores=[
+                        StudentWithScore(number=0, name="Harry", score=5),
+                        StudentWithScore(number=1, name="Hermione", score=10),
                     ],
-                    scores=[Score(number=0, score=5), Score(number=1, score=10)],
                 ),
                 Grade(
                     grade=3,
-                    students=[
-                        Student(number=0, name="Fred"),
-                        Student(number=1, name="George"),
+                    student_scores=[
+                        StudentWithScore(number=0, name="Fred", score=0),
+                        StudentWithScore(number=1, name="George", score=0),
                     ],
-                    scores=[Score(number=0, score=0), Score(number=1, score=0)],
                 ),
             ],
         ),

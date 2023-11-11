@@ -10,6 +10,13 @@ def test_default_group() -> None:
 
 
 def test_int_group() -> None:
+    """
+    Testing
+
+    - list
+
+    *bold*
+    """
     # Use a group specified by an int
     int_group = regex(r"ab(c)", group=1)
     assert int_group.parse("abc") == "c"

@@ -6,5 +6,4 @@
    :maxdepth: 2
    :caption: Contents:
 
-   lexing
    other_examples

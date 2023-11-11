@@ -4,6 +4,7 @@ import re
 import unittest
 from typing import Iterator, List, Union
 
+# to stop pytest thinking this function is a test
 from parsy import (
     ParseError,
     Parser,
@@ -22,11 +23,11 @@ from parsy import (
     seq,
     string,
     string_from,
+    whitespace,
 )
 from parsy import (
     test_char as parsy_test_char,
-)  # to stop pytest thinking this function is a test
-from parsy import whitespace
+)
 
 
 class TestParser(unittest.TestCase):
@@ -440,7 +441,7 @@ class TestParser(unittest.TestCase):
         """
         bad_parser = letter + regex(r"\d").map(int)  # type: ignore
 
-        self.assertRaises(TypeError, bad_parser.parse, "a1")  # type: ignore
+        self.assertRaises(TypeError, bad_parser.parse, "a1")  # type: ignore[unused-ignore]
 
     def test_add_numerics(self) -> None:
         digit = regex(r"\d")

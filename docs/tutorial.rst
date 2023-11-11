@@ -364,3 +364,16 @@ Learn more
 
 For further topics, see the :doc:`table of contents </index>` for the rest of
 the documentation that should enable you to build parsers for your needs.
+
+.. literalinclude:: /../examples/regex_demo.py
+   :language: python
+   :pyobject: test_int_group
+   :lines: 2-
+   :dedent: 4
+
+.. literalinclude:: /../examples/regex_demo.py
+   :language: markdown
+   :pyobject: test_int_group
+   :start-after: """
+   :end-before: """
+   :dedent: 4

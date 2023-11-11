@@ -7,14 +7,13 @@ from parsy import gather, regex, string, take, whitespace
 @dataclass
 class Person:
     name: str = take(regex(r"\w+") << whitespace)
-    age: int = take(regex(r"\d+").map(int) << whitespace)
-    note: str = take(regex(".+"))
+    age: int = take(regex(r"\d+").map(int))
 
 
 def test_dataclass_parser() -> None:
     person_parser = gather(Person)
-    person = person_parser.parse("Frodo 2000 how time flies")
-    assert person == Person(name="Frodo", age=2000, note="how time flies")
+    person = person_parser.parse("Bilbo 111")
+    assert person == Person(name="Bilbo", age=111)
 
 
 # Nesting dataclass parsers
@@ -44,7 +43,7 @@ class PersonDetail:
     surname: Optional[Name] = take(gather(Name).optional())
 
 
-def test_dataclass_parser_with_optional_field() -> None:
+def test_nested_dataclass_parser() -> None:
     out_parser = gather(PersonDetail).many()
 
     new_person = out_parser.parse("007 2023 Frodo T John 123 2004 Bob")

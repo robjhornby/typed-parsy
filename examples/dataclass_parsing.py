@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from parsy import gather, regex, string, take, whitespace
+from parsy import gather, padding, regex, string, take, whitespace
 
 
 @dataclass
@@ -31,8 +31,7 @@ class Id:
 class Name:
     name: str = take(regex(r"[a-zA-Z]+") << whitespace.optional())
     abbreviated: Optional[bool] = take(
-        (string("T").result(True) | string("F").result(False)).optional()
-        << whitespace.optional()
+        (string("T").result(True) | string("F").result(False)).optional() << padding
     )
 
 

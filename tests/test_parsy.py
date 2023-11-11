@@ -16,6 +16,7 @@ from parsy import (
     digit,
     forward_parser,
     from_enum,
+    gate_char,
     letter,
     line_info_at,
     peek,
@@ -25,31 +26,14 @@ from parsy import (
     string_from,
     whitespace,
 )
-from parsy import (
-    test_char as parsy_test_char,
-)
 
 
 class TestParser(unittest.TestCase):
     def test_string(self) -> None:
         parser = string("x")
         self.assertEqual(parser.parse("x"), "x")
-
         self.assertRaises(ParseError, parser.parse, "y")
-
-    def test_string_transform(self) -> None:
-        parser = string("x", transform=lambda s: s.lower())
-        self.assertEqual(parser.parse("x"), "x")
-        self.assertEqual(parser.parse("X"), "x")
-
         self.assertRaises(ParseError, parser.parse, "y")
-
-    def test_string_transform_2(self) -> None:
-        parser = string("Cat", transform=lambda s: s.lower())
-        self.assertEqual(parser.parse("cat"), "Cat")
-        self.assertEqual(parser.parse("CAT"), "Cat")
-        self.assertEqual(parser.parse("CaT"), "Cat")
-
         self.assertRaises(ParseError, parser.parse, "dog")
 
     def test_regex_str(self) -> None:
@@ -57,16 +41,7 @@ class TestParser(unittest.TestCase):
 
         self.assertEqual(parser.parse("1"), "1")
         self.assertEqual(parser.parse("4"), "4")
-
         self.assertRaises(ParseError, parser.parse, "x")
-
-    # def test_regex_bytes(self) -> None:
-    #     parser = regex(rb"[0-9]")
-
-    #     self.assertEqual(parser.parse(b"1"), b"1")
-    #     self.assertEqual(parser.parse(b"4"), b"4")
-
-    #     self.assertRaises(ParseError, parser.parse, b"x")
 
     def test_regex_compiled(self) -> None:
         parser = regex(re.compile(r"[0-9]"))
@@ -152,30 +127,6 @@ class TestParser(unittest.TestCase):
         self.assertEqual(xy.parse("xy"), 3)
         self.assertEqual(x, "x")
         self.assertEqual(y, "y")
-
-    def test_mark(self) -> None:
-        parser = (letter.many().mark() << string("\n")).many()
-
-        lines = parser.parse("asdf\nqwer\n")
-
-        self.assertEqual(len(lines), 2)
-
-        (start, letters, end) = lines[0]
-        self.assertEqual(start, (0, 0))
-        self.assertEqual(letters, ["a", "s", "d", "f"])
-        self.assertEqual(end, (0, 4))
-
-        (start, letters, end) = lines[1]
-        self.assertEqual(start, (1, 0))
-        self.assertEqual(letters, ["q", "w", "e", "r"])
-        self.assertEqual(end, (1, 4))
-
-    def test_tag(self) -> None:
-        parser = letter.many().concat().tag("word")
-        self.assertEqual(
-            parser.sep_by(string(",")).parse("this,is,a,list"),
-            [("word", "this"), ("word", "is"), ("word", "a"), ("word", "list")],
-        )
 
     def test_multiple_failures(self) -> None:
         abc = string("a") | string("b") | string("c")
@@ -480,7 +431,7 @@ class TestParser(unittest.TestCase):
     # Primitives
 
     def test_test_char(self) -> None:
-        ascii = parsy_test_char(lambda c: ord(c) < 128, "ascii character")
+        ascii = gate_char(lambda c: ord(c) < 128).desc("ascii character")
         self.assertEqual(ascii.parse("a"), "a")
         with self.assertRaises(ParseError) as err:
             ascii.parse("☺")
@@ -503,17 +454,6 @@ class TestParser(unittest.TestCase):
         ex = err.exception
         self.assertEqual(str(ex), """expected '[ab]' at 0:0""")
 
-    # def test_char_from_bytes(self) -> None:
-    #     ab = char_from(b"ab")
-    #     self.assertEqual(ab.parse(b"a"), b"a")
-    #     self.assertEqual(ab.parse(b"b"), b"b")
-
-    #     with self.assertRaises(ParseError) as err:
-    #         ab.parse(b"x")
-
-    #     ex = err.exception
-    #     self.assertEqual(str(ex), """expected b'[ab]' at 0""")
-
     def test_string_from(self) -> None:
         titles = string_from("Mr", "Mr.", "Mrs", "Mrs.")
         self.assertEqual(titles.parse("Mr"), "Mr")
@@ -526,13 +466,6 @@ class TestParser(unittest.TestCase):
         self.assertEqual(
             str(ex), """expected one of 'Mr', 'Mr.', 'Mrs', 'Mrs.' at 0:0"""
         )
-
-    def test_string_from_transform(self) -> None:
-        titles = string_from("Mr", "Mr.", "Mrs", "Mrs.", transform=lambda s: s.lower())
-        self.assertEqual(titles.parse("mr"), "Mr")
-        self.assertEqual(titles.parse("mr."), "Mr.")
-        self.assertEqual(titles.parse("MR"), "Mr")
-        self.assertEqual(titles.parse("MR."), "Mr.")
 
     def test_peek(self) -> None:
         self.assertEqual(peek(any_char).parse_partial("abc"), ("a", "abc"))
@@ -616,15 +549,6 @@ class TestParser(unittest.TestCase):
         self.assertEqual(position.parse("1"), Position.FIRST)
         self.assertEqual(position.parse("2"), Position.SECOND)
         self.assertRaises(ParseError, position.parse, "foo")
-
-    def test_from_enum_transform(self) -> None:
-        class Pet(enum.Enum):
-            CAT = "cat"
-            DOG = "dog"
-
-        pet = from_enum(Pet, transform=lambda s: s.lower())
-        self.assertEqual(pet.parse("cat"), Pet.CAT)
-        self.assertEqual(pet.parse("CAT"), Pet.CAT)
 
 
 class TestUtils(unittest.TestCase):

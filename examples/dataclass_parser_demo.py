@@ -127,7 +127,7 @@ class File:
     schools: List[School] = take(gather(School).many())
 
 
-def test_combined_dataclass_demo():
+def test_combined_dataclass_demo() -> None:
     file = gather(File).parse(text)
 
     assert file.schools == [

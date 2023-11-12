@@ -1,4 +1,3 @@
-import unittest
 from typing import Iterator, List, TypeVar, Union
 
 from parsy import Parser, forward_parser, regex, string
@@ -42,22 +41,22 @@ expr = form | quote | atom
 program = ignore >> expr.many()
 
 
-class TestSexpr(unittest.TestCase):
+class TestSexpr:
     def test_form(self) -> None:
         result = program.parse("(1 2 3)")
-        self.assertEqual(result, [[1, 2, 3]])
+        assert result == [[1, 2, 3]]
 
     def test_quote(self) -> None:
         result = program.parse("'foo '(bar baz)")
-        self.assertEqual(result, [["quote", "foo"], ["quote", ["bar", "baz"]]])
+        assert result == [["quote", "foo"], ["quote", ["bar", "baz"]]]
 
     def test_double_quote(self) -> None:
         result = program.parse("''foo")
-        self.assertEqual(result, [["quote", ["quote", "foo"]]])
+        assert result == [["quote", ["quote", "foo"]]]
 
     def test_boolean(self) -> None:
         result = program.parse("#t #f")
-        self.assertEqual(result, [True, False])
+        assert result == [True, False]
 
     def test_comments(self) -> None:
         result = program.parse(
@@ -69,8 +68,4 @@ class TestSexpr(unittest.TestCase):
             """
         )
 
-        self.assertEqual(result, [["foo", "bar"]])
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert result == [["foo", "bar"]]
